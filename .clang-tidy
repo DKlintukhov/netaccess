@@ -1,0 +1,17 @@
+# clang-tidy configuration for netaccess.
+# Run with: clang-tidy <file> -p build
+Checks: >-
+    -*,
+    bugprone-*,
+    performance-*,
+    readability-*,
+    modernize-*,
+    -modernize-use-trailing-return-type,
+    -readability-magic-numbers,
+    -readability-identifier-length
+
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/src/.*'
+FormatStyle: file
+CheckOptions:
+    - { key: readability-function-cognitive-complexity.Threshold, value: 30 }

@@ -1,0 +1,17 @@
+# Microsoft style, aligned to the C++20 standard.
+BasedOnStyle: Microsoft
+Standard: c++20
+IndentWidth: 4
+ColumnLimit: 120
+TabWidth: 4
+UseTab: Never
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Allman
+AccessModifierOffset: -4
+NamespaceIndentation: None
+PointerAlignment: Left
+DerivePointerAlignment: false

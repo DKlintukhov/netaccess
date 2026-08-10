@@ -1,0 +1,12 @@
+# Windows + MSVC (Visual Studio), Ninja (single-config).
+# Matches `conan profile detect` on this machine. Adjust compiler.version to
+# the installed Visual Studio toolset if it differs.
+[settings]
+os=Windows
+arch=x86_64
+compiler=msvc
+compiler.version=195
+compiler.cppstd=20
+compiler.runtime=dynamic
+compiler.runtime_type=Release
+build_type=Release

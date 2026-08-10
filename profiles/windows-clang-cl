@@ -1,0 +1,14 @@
+# Windows + clang-cl (VS LLVM toolset), Ninja (single-config).
+# EXPERIMENTAL: the Qt recipe may not fully support clang on Windows.
+# Requires the "C++ Clang tools for Windows" VS component; clang-cl must be
+# usable from a vcvars environment (x64 Native Tools prompt or conanvcvars.bat). Adjust compiler.version to the
+# installed LLVM. First run rebuilds Qt from source (hours).
+[settings]
+os=Windows
+arch=x86_64
+compiler=clang
+compiler.version=22
+compiler.cppstd=20
+compiler.runtime=dynamic
+compiler.runtime_type=Release
+build_type=Release

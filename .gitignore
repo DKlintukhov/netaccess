@@ -54,3 +54,22 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+
+# Build system
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# Conan
+conaninfo.txt
+graph_info.json
+
+# IDE / editors
+.vs/
+.vscode/
+.idea/
+*.code-workspace
+
+# Misc
+*.log

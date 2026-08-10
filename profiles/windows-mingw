@@ -1,0 +1,13 @@
+# Windows + MinGW-w64 (GCC), Ninja (single-config).
+# Requires a MinGW-w64 toolchain (WinLibs or MSYS2 ucrt64) on PATH, e.g.:
+#   set PATH=C:\msys64\ucrt64\bin;%PATH%
+# Adjust compiler.version to the installed GCC. First run rebuilds Qt from
+# source (hours) because the MSVC Qt cache does not match the GCC ABI.
+[settings]
+os=Windows
+arch=x86_64
+compiler=gcc
+compiler.version=14
+compiler.cppstd=20
+compiler.libcxx=libstdc++11
+build_type=Release
