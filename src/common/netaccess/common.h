@@ -1,6 +1,7 @@
 #pragma once
 
-namespace netaccess {
+namespace netaccess
+{
 
 const char* versionString() noexcept;
 

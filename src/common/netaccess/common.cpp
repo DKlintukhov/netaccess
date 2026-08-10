@@ -2,11 +2,12 @@
 
 #include <netaccess/version.h>
 
-namespace netaccess {
+namespace netaccess
+{
 
 const char* versionString() noexcept
 {
     return NETACCESS_VERSION_STRING;
 }
 
-}  // namespace netaccess
+} // namespace netaccess

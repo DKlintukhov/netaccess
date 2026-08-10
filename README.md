@@ -47,8 +47,9 @@ conan install . --build=missing -pr=profiles/windows-clang-cl  # LLVM clang-cl
 ### Release
 
 ```console
-# 1. Detect the Conan profile (once)
+# 1. Detect the Conan profile (once) — Qt requires C++17+, so pin cppstd
 conan profile detect
+conan profile update settings.compiler.cppstd=20 default
 
 # 2. Install dependencies (Qt is built from source on the first run)
 conan install . --build=missing

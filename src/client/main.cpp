@@ -13,7 +13,8 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty("netaccessVersion", QString::fromUtf8(netaccess::versionString()));
 
     engine.load(QUrl(QStringLiteral("qrc:/qml/Main.qml")));
-    if (engine.rootObjects().isEmpty()) {
+    if (engine.rootObjects().isEmpty())
+    {
         return -1;
     }
 
