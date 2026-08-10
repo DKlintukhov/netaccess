@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   windows:
-    name: Windows (MSVC + Conan + Qt6)
+    name: Windows (MSVC + Qt6)
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -21,33 +21,27 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Conan and clang-format
-        run: pip install conan clang-format
+      - name: Install clang-format
+        run: pip install clang-format==22.1.3
 
-      - name: Detect Conan profile
-        run: |
-          conan profile detect --force
-          conan profile update settings.compiler.cppstd=20 default
-
-      - name: Cache Conan
-        uses: actions/cache@v4
+      # aqtinstall provides prebuilt Qt 6.8 for MSVC — no Conan, so no
+      # hours-long Qt-from-source build on cache misses. Sets Qt6_DIR and
+      # adds Qt to PATH.
+      - name: Install Qt 6.8
+        uses: jurplel/install-qt-action@v4
         with:
-          path: ~/.conan2
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          version: "6.8.*"
+          host: "windows"
+          target: "desktop"
+          arch: "win64_msvc2022_64"
 
       # Ninja generator requires cl.exe on PATH; the VS generator locates the
       # toolset itself. This sets up the MSVC environment for the whole job.
       - name: Set up MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
 
-      # cmake_layout() writes into build/Release. No CMake presets: configure
-      # with the Conan toolchain explicitly (Ninja needs cl.exe on PATH, which
-      # ilammy/msvc-dev-cmd set up above).
-      - name: Install dependencies
-        run: conan install . --build=missing
-
       - name: Configure
-        run: cmake -S . -B build/Release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake
+        run: cmake -S . -B build/Release -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build/Release
@@ -65,10 +59,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build clang-format libpq5
+          sudo apt-get install -y ninja-build libpq5
+
+      - name: Install clang-format
+        run: pip install clang-format==22.1.3
 
       # aqtinstall provides prebuilt Qt 6.8 (ubuntu-latest's apt Qt is too old
       # for find_package(Qt6 6.8)). Sets Qt6_DIR and adds Qt to PATH.

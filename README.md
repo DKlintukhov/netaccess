@@ -47,12 +47,12 @@ conan install . --build=missing -pr=profiles/windows-clang-cl  # LLVM clang-cl
 ### Release
 
 ```console
-# 1. Detect the Conan profile (once) — Qt requires C++17+, so pin cppstd
+# 1. Detect the Conan profile (once)
 conan profile detect
-conan profile update settings.compiler.cppstd=20 default
 
-# 2. Install dependencies (Qt is built from source on the first run)
-conan install . --build=missing
+# 2. Install dependencies (Qt is built from source on the first run).
+#    profile detect sets cppstd=14 on MSVC, but Qt requires C++17+ — pin it.
+conan install . --build=missing -s compiler.cppstd=20
 
 # 3. Configure, build, test
 cmake -S . -B build/Release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake
@@ -73,7 +73,7 @@ ctest --test-dir build/Release --output-on-failure
 Same pattern with its own install and folder:
 
 ```console
-conan install . -s build_type=Debug --build=missing
+conan install . -s build_type=Debug -s compiler.cppstd=20 --build=missing
 cmake -S . -B build/Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=build/Debug/generators/conan_toolchain.cmake
 cmake --build build/Debug
 ctest --test-dir build/Debug --output-on-failure
