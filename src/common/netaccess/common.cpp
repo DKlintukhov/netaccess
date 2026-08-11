@@ -1,6 +1,6 @@
 #include <netaccess/common.h>
 
-#include <netaccess/version.h>
+#include <netaccess/config.h>
 
 namespace netaccess
 {

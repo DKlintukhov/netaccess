@@ -8,7 +8,8 @@ file(GLOB_RECURSE NETACCESS_COMMON_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
 )
 
-configure_file(version.h.in "${CMAKE_CURRENT_BINARY_DIR}/netaccess/version.h" @ONLY)
+set(NETACCESS_CONFIG_IN "${CMAKE_CURRENT_SOURCE_DIR}/config.h.in")
+configure_file("${NETACCESS_CONFIG_IN}" "${CMAKE_CURRENT_BINARY_DIR}/netaccess/config.h" @ONLY)
 
 if(NETACCESS_COMMON_SOURCES)
     add_library(netaccess_common STATIC ${NETACCESS_COMMON_SOURCES})
