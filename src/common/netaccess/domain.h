@@ -1,5 +1,5 @@
 /**
- * @file models.h
+ * @file domain.h
  * @brief ABAC (Attribute-Based Access Control) data model for netaccess.
  *
  * Implements the access model per technical specification TZ-NETACCESS-001:
@@ -18,7 +18,7 @@
 #include <string_view>
 #include <vector>
 
-namespace models
+namespace domain
 {
 
 /// Identifier of a subject or a resource.
@@ -110,7 +110,7 @@ struct Subject
     ID id = 0;
     std::string username;
     std::string full_name;
-    std::string department;  ///< Department.
+    std::string department; ///< Department.
     Role role = Role::user;
     int clearance_level = 0; ///< Clearance level, 0..5.
     bool is_active = true;
@@ -312,4 +312,4 @@ struct Decision
     return Decision{true, "policy:" + best->name};
 }
 
-} // namespace models
+} // namespace domain

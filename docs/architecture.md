@@ -87,7 +87,7 @@ graph LR
 
 | Модуль | Назначение |
 |---|---|
-| `models` | Модель данных ABAC: Subject, Resource, Policy, Action, evaluate_policy |
+| `domain` | Модель данных ABAC: Subject, Resource, Policy, Action, evaluate_policy |
 | `protocol` | Сериализация/десериализация сообщений (JSON), коды операций и результатов |
 
 ## 4 Потоки обработки
