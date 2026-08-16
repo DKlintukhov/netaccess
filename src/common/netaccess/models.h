@@ -110,9 +110,9 @@ struct Subject
     ID id = 0;
     std::string username;
     std::string full_name;
+    std::string department;  ///< Department.
     Role role = Role::user;
     int clearance_level = 0; ///< Clearance level, 0..5.
-    std::string department;  ///< Department.
     bool is_active = true;
 };
 
@@ -192,8 +192,8 @@ struct Policy
     ID id = 0;
     std::string name;
     Action action = Action::any; ///< '*' means the action is not restricted.
-    bool enabled = true;
     int priority = 0;
+    bool enabled = true;
     std::optional<Role> role_required;
     std::optional<std::string> department_required;
     std::optional<int> min_clearance;
@@ -211,8 +211,8 @@ struct Policy
  */
 struct Decision
 {
-    bool allowed = false;
     std::string reason; ///< Reason of denial/allowance.
+    bool allowed = false;
 };
 
 // ---------------------------------------------------------------------------
