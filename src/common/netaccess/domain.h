@@ -211,8 +211,8 @@ struct Policy
  */
 struct Decision
 {
-    std::string reason; ///< Reason of denial/allowance.
     bool allowed = false;
+    std::string reason; ///< Reason of denial/allowance.
 };
 
 // ---------------------------------------------------------------------------
