@@ -14,6 +14,10 @@ file(GLOB_RECURSE NETACCESS_CLIENT_SOURCES CONFIGURE_DEPENDS
 if(NETACCESS_CLIENT_SOURCES)
     add_executable(netaccess_client ${NETACCESS_CLIENT_SOURCES})
 
+    target_include_directories(netaccess_client PRIVATE
+        "${CMAKE_SOURCE_DIR}/src"
+    )
+
     target_link_libraries(netaccess_client PRIVATE
         netaccess_common
         Qt6::Core
