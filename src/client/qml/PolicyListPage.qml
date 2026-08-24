@@ -23,9 +23,9 @@ Page {
         anchors.margins: 8
 
         RowLayout {
-            Label { text: "Policies"; font.bold: true; font.pixelSize: 18 }
+            Label { text: qsTr("Policies"); font.bold: true; font.pixelSize: 18 }
             Item { Layout.fillWidth: true }
-            Button { text: "Refresh"; onClicked: loadPolicies() }
+            Button { text: qsTr("Refresh"); onClicked: loadPolicies() }
         }
 
         ListView {
@@ -49,14 +49,14 @@ Page {
                     Label { text: modelData.role_required || "*"; color: "#999"; width: 80 }
                     Label { text: modelData.resource_type || "*"; color: "#999"; width: 100 }
                     Label { text: "P:" + (modelData.priority || 0); width: 50 }
-                    Label { text: modelData.enabled ? "ON" : "OFF"; color: modelData.enabled ? "green" : "red" }
+                    Label { text: modelData.enabled ? qsTr("ON") : qsTr("OFF"); color: modelData.enabled ? "green" : "red" }
                 }
             }
 
             BusyIndicator { anchors.centerIn: parent; running: apiClient.busy }
         }
 
-        Label { text: "Total: " + (policyModel.length || 0); color: "#666" }
+        Label { text: qsTr("Total: ") + (policyModel.length || 0); color: "#666" }
     }
 
     signal handleResponse(int reqId, var response)

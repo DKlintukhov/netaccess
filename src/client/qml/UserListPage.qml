@@ -23,9 +23,9 @@ Page {
         anchors.margins: 8
 
         RowLayout {
-            Label { text: "Users"; font.bold: true; font.pixelSize: 18 }
+            Label { text: qsTr("Users"); font.bold: true; font.pixelSize: 18 }
             Item { Layout.fillWidth: true }
-            Button { text: "Refresh"; onClicked: loadUsers() }
+            Button { text: qsTr("Refresh"); onClicked: loadUsers() }
         }
 
         ListView {
@@ -48,14 +48,14 @@ Page {
                     Label { text: modelData.full_name || ""; Layout.fillWidth: true }
                     Label { text: modelData.role || ""; color: "#666"; width: 80 }
                     Label { text: modelData.department || ""; color: "#999"; width: 100 }
-                    Label { text: modelData.is_active ? "active" : "inactive"; color: modelData.is_active ? "green" : "red" }
+                    Label { text: modelData.is_active ? qsTr("active") : qsTr("inactive"); color: modelData.is_active ? "green" : "red" }
                 }
             }
 
             BusyIndicator { anchors.centerIn: parent; running: apiClient.busy }
         }
 
-        Label { text: "Total: " + (userModel.length || 0); color: "#666" }
+        Label { text: qsTr("Total: ") + (userModel.length || 0); color: "#666" }
     }
 
     signal handleResponse(int reqId, var response)

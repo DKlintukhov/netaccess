@@ -30,7 +30,7 @@ ApplicationWindow {
     Dialog {
         id: errorDialog
         modal: true
-        title: "Error"
+        title: qsTr("Error")
         anchors.centerIn: parent
         standardButtons: Dialog.Ok
         Label {

@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QTranslator>
 #include <QUrl>
 
 #include <client/api_client.h>
@@ -12,6 +13,14 @@ int main(int argc, char* argv[])
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("netaccess_client"));
     app.setApplicationVersion(QString::fromUtf8(netaccess::versionString()));
+
+    // Load translation based on system locale.
+    const QString locale = QLocale::system().name(); // e.g. "ru_RU", "en_US"
+    QTranslator translator;
+    if (translator.load(QStringLiteral(":/translations/netaccess_") + locale))
+    {
+        app.installTranslator(&translator);
+    }
 
     // Register QML types.
     qmlRegisterType<client::ApiClient>("NetAccess", 1, 0, "ApiClient");

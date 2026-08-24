@@ -11,9 +11,7 @@ Page {
     property int listReqId: 0
     property var resourceModel: []
 
-    Component.onCompleted: {
-        loadResources()
-    }
+    Component.onCompleted: loadResources()
 
     function loadResources() {
         listReqId = 1000 + Math.floor(Math.random() * 10000)
@@ -29,13 +27,13 @@ Page {
 
         RowLayout {
             Label {
-                text: "Resources"
+                text: qsTr("Resources")
                 font.bold: true
                 font.pixelSize: 18
             }
             Item { Layout.fillWidth: true }
             Button {
-                text: "Refresh"
+                text: qsTr("Refresh")
                 onClicked: loadResources()
             }
         }
@@ -89,7 +87,7 @@ Page {
         }
 
         Label {
-            text: "Total: " + (resourceModel.length || 0)
+            text: qsTr("Total: ") + (resourceModel.length || 0)
             color: "#666"
         }
     }

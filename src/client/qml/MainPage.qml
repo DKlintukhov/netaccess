@@ -24,7 +24,7 @@ Page {
                 padding: 8
             }
             Button {
-                text: "Logout"
+                text: qsTr("Logout")
                 onClicked: {
                     apiClient.sendRequest("LOGOUT", nextReqId++)
                     sessionState.clear()
@@ -39,17 +39,17 @@ Page {
         width: parent.width
         currentIndex: stackLayout.currentIndex
 
-        TabButton { text: "Resources" }
+        TabButton { text: qsTr("Resources") }
         TabButton {
-            text: "Users"
+            text: qsTr("Users")
             visible: sessionState.isAdmin()
         }
         TabButton {
-            text: "Policies"
+            text: qsTr("Policies")
             visible: sessionState.isAdmin() || sessionState.role === "auditor"
         }
         TabButton {
-            text: "Audit Log"
+            text: qsTr("Audit Log")
             visible: sessionState.isAdmin() || sessionState.role === "auditor"
         }
     }
@@ -86,7 +86,6 @@ Page {
     signal handleResponse(int reqId, var response)
 
     function dispatchResponse(reqId, response) {
-        // Forward to the active tab.
         var item = stackLayout.currentItem
         if (item && item.handleResponse) {
             item.handleResponse(reqId, response)

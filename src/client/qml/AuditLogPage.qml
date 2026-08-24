@@ -23,9 +23,9 @@ Page {
         anchors.margins: 8
 
         RowLayout {
-            Label { text: "Audit Log"; font.bold: true; font.pixelSize: 18 }
+            Label { text: qsTr("Audit Log"); font.bold: true; font.pixelSize: 18 }
             Item { Layout.fillWidth: true }
-            Button { text: "Refresh"; onClicked: loadAudit() }
+            Button { text: qsTr("Refresh"); onClicked: loadAudit() }
         }
 
         ListView {
@@ -55,7 +55,7 @@ Page {
             BusyIndicator { anchors.centerIn: parent; running: apiClient.busy }
         }
 
-        Label { text: "Total: " + (auditModel.length || 0); color: "#666" }
+        Label { text: qsTr("Total: ") + (auditModel.length || 0); color: "#666" }
     }
 
     signal handleResponse(int reqId, var response)

@@ -24,14 +24,14 @@ Page {
 
         TextField {
             id: hostField
-            placeholderText: "Host"
+            placeholderText: qsTr("Host")
             text: "localhost"
             Layout.fillWidth: true
         }
 
         TextField {
             id: portField
-            placeholderText: "Port"
+            placeholderText: qsTr("Port")
             text: "9988"
             Layout.fillWidth: true
             validator: IntValidator { bottom: 1; top: 65535 }
@@ -39,19 +39,19 @@ Page {
 
         TextField {
             id: usernameField
-            placeholderText: "Username"
+            placeholderText: qsTr("Username")
             Layout.fillWidth: true
         }
 
         TextField {
             id: passwordField
-            placeholderText: "Password"
+            placeholderText: qsTr("Password")
             echoMode: TextInput.Password
             Layout.fillWidth: true
         }
 
         Button {
-            text: "Connect & Login"
+            text: qsTr("Connect & Login")
             Layout.fillWidth: true
             enabled: !apiClient.busy
             onClicked: {
@@ -61,7 +61,7 @@ Page {
 
         Label {
             id: statusLabel
-            text: apiClient.connected ? "Connected" : "Disconnected"
+            text: apiClient.connected ? qsTr("Connected") : qsTr("Disconnected")
             color: apiClient.connected ? "green" : "red"
             Layout.alignment: Qt.AlignHCenter
         }
@@ -69,7 +69,6 @@ Page {
         Connections {
             target: apiClient
             function onConnectedToServer() {
-                // Send AUTH request.
                 loginReqId = 1
                 apiClient.sendRequest("AUTH", loginReqId, {
                     "username": usernameField.text,
@@ -77,7 +76,7 @@ Page {
                 })
             }
             function onDisconnectedFromServer() {
-                statusLabel.text = "Disconnected"
+                statusLabel.text = qsTr("Disconnected")
                 statusLabel.color = "red"
             }
         }
