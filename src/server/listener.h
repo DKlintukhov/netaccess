@@ -1,9 +1,9 @@
 /**
  * @file listener.h
- * @brief TCP+TLS listener for the netaccept server.
+ * @brief TCP+TLS listener for the netaccess server.
  *
  * Accepts incoming connections, performs TLS handshake, reads framed
- * JSON requests, dispatches them to the Handler, and writes framed
+ * JSON requests, dispatches them to the PEP, and writes framed
  * responses back.
  */
 
@@ -15,7 +15,7 @@
 #include <QSslSocket>
 #include <QTcpServer>
 
-#include <server/handlers.h>
+#include <server/pep.h>
 
 namespace server
 {
@@ -28,16 +28,12 @@ class Listener : public QObject
     Q_OBJECT
 
 public:
-    Listener(const ServerConfig& cfg, handlers::Handler& handler, QObject* parent = nullptr);
+    Listener(const ServerConfig& cfg, pep::PEP& pep, QObject* parent = nullptr);
     ~Listener() override;
 
-    /// Starts listening.  Returns false on error.
     bool start();
-
-    /// Stops listening and closes all connections.
     void stop();
 
-    /// Returns the address/port actually bound.
     QHostAddress listenAddress() const;
     quint16 listenPort() const;
 
@@ -55,7 +51,7 @@ private:
     void processRequest(QSslSocket* socket);
 
     ServerConfig m_cfg;
-    handlers::Handler& m_handler;
+    pep::PEP& m_pep;
     QTcpServer* m_server = nullptr;
     QSslCertificate m_cert;
     QSslKey m_key;

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <server/db_layer.h>
+#include <server/pip.h>
 
 namespace session
 {
@@ -19,22 +19,15 @@ namespace session
 class SessionManager
 {
 public:
-    explicit SessionManager(db::DbLayer& db, const server::ServerConfig& cfg);
+    explicit SessionManager(pip::PIP& pip, const server::ServerConfig& cfg);
 
-    /// Returns true if the server has not reached max concurrent sessions.
     bool canAcceptSession() const;
-
-    /// Revokes all sessions for a given user (force logout everywhere).
     bool forceLogoutAll(qint64 userId);
-
-    /// Revokes a specific session by ID (admin action).
     bool revokeSession(qint64 sessionId);
-
-    /// Returns the number of currently active sessions.
     int activeSessionCount() const;
 
 private:
-    db::DbLayer& m_db;
+    pip::PIP& m_pip;
     server::ServerConfig m_cfg;
 };
 

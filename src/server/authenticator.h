@@ -13,7 +13,7 @@
 #include <optional>
 
 #include <server/config.h>
-#include <server/db_layer.h>
+#include <server/pip.h>
 
 namespace auth
 {
@@ -24,14 +24,14 @@ namespace auth
 struct AuthResult
 {
     bool success = false;
-    QString token; ///< Raw session token (only on success).
+    QString token;
     qint64 user_id = 0;
     QString username;
     QString full_name;
     QString role;
     int clearance_level = 0;
     QString department;
-    QString error_code; ///< protocol::ResultCode string on failure.
+    QString error_code;
 };
 
 /**
@@ -40,30 +40,18 @@ struct AuthResult
 class Authenticator
 {
 public:
-    explicit Authenticator(db::DbLayer& db, const server::ServerConfig& cfg);
+    explicit Authenticator(pip::PIP& pip, const server::ServerConfig& cfg);
 
-    /// Verifies credentials and creates a session. Returns AuthResult.
     AuthResult authenticate(const QString& username, const QString& password);
-
-    /// Verifies a session token and returns user info.
-    std::optional<db::SubjectAttrs> verifyToken(const QString& token);
-
-    /// Ends a session (LOGOUT).
+    std::optional<pip::SubjectAttrs> verifyToken(const QString& token);
     bool logout(const QString& token);
 
-    // ----- Password utilities ----------------------------------------------
-
-    /// Hashes a password with PBKDF2-HMAC-SHA256. Returns "hash_hex:salt_hex".
     static QString hashPassword(const QString& password, const QString& salt = {});
-
-    /// Generates a random 256-bit token and returns it as hex.
     static QString generateToken();
-
-    /// Returns the SHA-256 hex hash of a token (for DB storage).
     static QString hashToken(const QString& token);
 
 private:
-    db::DbLayer& m_db;
+    pip::PIP& m_pip;
     server::ServerConfig m_cfg;
 };
 

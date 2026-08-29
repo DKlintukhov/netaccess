@@ -9,7 +9,7 @@
 namespace auth
 {
 
-Authenticator::Authenticator(db::DbLayer& db, const server::ServerConfig& cfg) : m_db(db), m_cfg(cfg)
+Authenticator::Authenticator(pip::PIP& pip, const server::ServerConfig& cfg) : m_pip(pip), m_cfg(cfg)
 {
 }
 
@@ -92,7 +92,7 @@ AuthResult Authenticator::authenticate(const QString& username, const QString& p
 {
     AuthResult result;
 
-    auto user = m_db.findUserByUsername(username);
+    auto user = m_pip.findUserByUsername(username);
     if (!user)
     {
         result.error_code = QStringLiteral("AUTH_DENIED");
@@ -124,12 +124,12 @@ AuthResult Authenticator::authenticate(const QString& username, const QString& p
     if (storedHash != computedHash)
     {
         // Increment failed attempts.
-        m_db.incrementFailedAttempts(user->id);
+        m_pip.incrementFailedAttempts(user->id);
 
-        auto updatedUser = m_db.findUserById(user->id);
+        auto updatedUser = m_pip.findUserById(user->id);
         if (updatedUser && updatedUser->failed_attempts >= m_cfg.max_failed_attempts)
         {
-            m_db.lockUser(user->id, m_cfg.lockout_minutes);
+            m_pip.lockUser(user->id, m_cfg.lockout_minutes);
         }
 
         result.error_code = QStringLiteral("AUTH_DENIED");
@@ -137,16 +137,16 @@ AuthResult Authenticator::authenticate(const QString& username, const QString& p
     }
 
     // Success: reset failed attempts, update last login.
-    m_db.resetFailedAttempts(user->id);
-    m_db.updateLastLogin(user->id);
+    m_pip.resetFailedAttempts(user->id);
+    m_pip.updateLastLogin(user->id);
 
     // Get subject attrs.
-    auto attrs = m_db.getSubjectAttrs(user->id);
+    auto attrs = m_pip.getSubjectAttrs(user->id);
 
     // Generate token and create session.
     const QString token = generateToken();
     const QString tokenHash = hashToken(token);
-    const qint64 sessionId = m_db.createSession(user->id, tokenHash, m_cfg.session_lifetime_h);
+    const qint64 sessionId = m_pip.createSession(user->id, tokenHash, m_cfg.session_lifetime_h);
 
     if (sessionId < 0)
     {
@@ -170,22 +170,22 @@ AuthResult Authenticator::authenticate(const QString& username, const QString& p
 // Token verification
 // ---------------------------------------------------------------------------
 
-std::optional<db::SubjectAttrs> Authenticator::verifyToken(const QString& token)
+std::optional<pip::SubjectAttrs> Authenticator::verifyToken(const QString& token)
 {
     const QString tokenHash = hashToken(token);
-    auto session = m_db.findSessionByTokenHash(tokenHash);
+    auto session = m_pip.findSessionByTokenHash(tokenHash);
     if (!session)
     {
         return std::nullopt;
     }
 
-    auto user = m_db.findUserById(session->user_id);
+    auto user = m_pip.findUserById(session->user_id);
     if (!user || !user->is_active)
     {
         return std::nullopt;
     }
 
-    return m_db.getSubjectAttrs(user->id);
+    return m_pip.getSubjectAttrs(user->id);
 }
 
 // ---------------------------------------------------------------------------
@@ -195,12 +195,12 @@ std::optional<db::SubjectAttrs> Authenticator::verifyToken(const QString& token)
 bool Authenticator::logout(const QString& token)
 {
     const QString tokenHash = hashToken(token);
-    auto session = m_db.findSessionByTokenHash(tokenHash);
+    auto session = m_pip.findSessionByTokenHash(tokenHash);
     if (!session)
     {
         return false;
     }
-    return m_db.revokeSession(session->id);
+    return m_pip.revokeSession(session->id);
 }
 
 } // namespace auth

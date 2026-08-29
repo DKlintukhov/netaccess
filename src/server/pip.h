@@ -1,10 +1,10 @@
 /**
- * @file db_layer.h
- * @brief Database access layer for netaccess.
+ * @file pip.h
+ * @brief Policy Information Point (PIP) — provides attribute data from PostgreSQL.
  *
  * Wraps QPSQL with prepared statements for all CRUD operations.
  * All user-supplied data is bound via placeholders — no string
- * concatenation in SQL (protection against SQL injection, У12).
+ * concatenation in SQL (protection against SQL injection).
  */
 
 #pragma once
@@ -15,7 +15,7 @@
 
 #include <server/config.h>
 
-namespace db
+namespace pip
 {
 
 // ---------------------------------------------------------------------------
@@ -32,8 +32,8 @@ struct UserRecord
     QString position;
     bool is_active = true;
     int failed_attempts = 0;
-    QString locked_until;  // ISO-8601 or empty
-    QString last_login_at; // ISO-8601 or empty
+    QString locked_until;
+    QString last_login_at;
 };
 
 struct SessionRecord
@@ -73,10 +73,10 @@ struct PolicyRecord
     QString action;
     QString role_required;
     QString department_required;
-    int min_clearance = -1; // -1 = not set
+    int min_clearance = -1;
     QString resource_type;
-    qint64 subject_id = 0;  // 0 = not set
-    qint64 resource_id = 0; // 0 = not set
+    qint64 subject_id = 0;
+    qint64 resource_id = 0;
     int priority = 0;
     qint64 created_by = 0;
 };
@@ -91,13 +91,13 @@ struct AuditRecord
     QString target_type;
     qint64 target_id = 0;
     QString result;
-    QString details; // JSON string
+    QString details;
 };
 
 struct AuditFilter
 {
-    QString from; // ISO-8601
-    QString to;   // ISO-8601
+    QString from;
+    QString to;
     qint64 actor_id = 0;
     QString action;
     int page = 1;
@@ -105,34 +105,27 @@ struct AuditFilter
 };
 
 // ---------------------------------------------------------------------------
-// Database layer.
+// Policy Information Point — attribute provider backed by PostgreSQL.
 // ---------------------------------------------------------------------------
 
 /**
- * @brief PostgreSQL data access layer.
+ * @brief Policy Information Point (PIP).
  *
- * All queries use prepared statements.  The connection is established
- * via open() and must be closed explicitly or in the destructor.
+ * Provides subject, resource, and policy attributes to the PDP.
+ * All queries use prepared statements.
  */
-class DbLayer
+class PIP
 {
 public:
-    DbLayer() = default;
-    ~DbLayer();
+    PIP() = default;
+    ~PIP();
 
-    DbLayer(const DbLayer&) = delete;
-    DbLayer& operator=(const DbLayer&) = delete;
+    PIP(const PIP&) = delete;
+    PIP& operator=(const PIP&) = delete;
 
-    /// Opens a connection to PostgreSQL using the provided config.
     bool open(const server::ServerConfig& cfg);
-
-    /// Closes the database connection.
     void close();
-
-    /// Returns true if the connection is open.
     bool isConnected() const;
-
-    /// Applies schema and seed migrations (V001, V002).
     bool applyMigrations(const QString& schemaPath, const QString& seedPath);
 
     // ----- Users -----------------------------------------------------------
@@ -206,4 +199,4 @@ private:
     QSqlDatabase m_db;
 };
 
-} // namespace db
+} // namespace pip

@@ -1,4 +1,4 @@
-#include <server/db_layer.h>
+#include <server/pip.h>
 
 #include <QDateTime>
 #include <QFile>
@@ -6,15 +6,15 @@
 #include <QSqlQuery>
 #include <QTextStream>
 
-namespace db
+namespace pip
 {
 
-DbLayer::~DbLayer()
+PIP::~PIP()
 {
     close();
 }
 
-bool DbLayer::open(const server::ServerConfig& cfg)
+bool PIP::open(const server::ServerConfig& cfg)
 {
     m_db = QSqlDatabase::addDatabase(QStringLiteral("QPSQL"));
     m_db.setHostName(cfg.db_host);
@@ -33,7 +33,7 @@ bool DbLayer::open(const server::ServerConfig& cfg)
     return true;
 }
 
-void DbLayer::close()
+void PIP::close()
 {
     if (m_db.isOpen())
     {
@@ -41,12 +41,12 @@ void DbLayer::close()
     }
 }
 
-bool DbLayer::isConnected() const
+bool PIP::isConnected() const
 {
     return m_db.isOpen();
 }
 
-bool DbLayer::runSqlFile(const QString& path)
+bool PIP::runSqlFile(const QString& path)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -59,7 +59,7 @@ bool DbLayer::runSqlFile(const QString& path)
     return q.exec(sql);
 }
 
-bool DbLayer::applyMigrations(const QString& schemaPath, const QString& seedPath)
+bool PIP::applyMigrations(const QString& schemaPath, const QString& seedPath)
 {
     if (!runSqlFile(schemaPath))
     {
@@ -72,7 +72,7 @@ bool DbLayer::applyMigrations(const QString& schemaPath, const QString& seedPath
 // Users
 // ---------------------------------------------------------------------------
 
-std::optional<UserRecord> DbLayer::findUserByUsername(const QString& username)
+std::optional<UserRecord> PIP::findUserByUsername(const QString& username)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT id, username, password_hash, salt, full_name, position, is_active, "
@@ -99,7 +99,7 @@ std::optional<UserRecord> DbLayer::findUserByUsername(const QString& username)
     return r;
 }
 
-std::optional<UserRecord> DbLayer::findUserById(qint64 id)
+std::optional<UserRecord> PIP::findUserById(qint64 id)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT id, username, password_hash, salt, full_name, position, is_active, "
@@ -126,9 +126,9 @@ std::optional<UserRecord> DbLayer::findUserById(qint64 id)
     return r;
 }
 
-qint64 DbLayer::createUser(const QString& username, const QString& passwordHash, const QString& salt,
-                           const QString& fullName, const QString& position, const QString& role, int clearanceLevel,
-                           const QString& department)
+qint64 PIP::createUser(const QString& username, const QString& passwordHash, const QString& salt,
+                       const QString& fullName, const QString& position, const QString& role, int clearanceLevel,
+                       const QString& department)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("INSERT INTO users (username, password_hash, salt, full_name, position) "
@@ -163,7 +163,7 @@ qint64 DbLayer::createUser(const QString& username, const QString& passwordHash,
     return userId;
 }
 
-bool DbLayer::updateUser(qint64 id, const QString& fullName, const QString& position, bool isActive)
+bool PIP::updateUser(qint64 id, const QString& fullName, const QString& position, bool isActive)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE users SET full_name = :full_name, position = :position, "
@@ -175,7 +175,7 @@ bool DbLayer::updateUser(qint64 id, const QString& fullName, const QString& posi
     return q.exec();
 }
 
-bool DbLayer::deleteUser(qint64 id)
+bool PIP::deleteUser(qint64 id)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("DELETE FROM users WHERE id = :id"));
@@ -183,7 +183,7 @@ bool DbLayer::deleteUser(qint64 id)
     return q.exec();
 }
 
-QVector<UserRecord> DbLayer::listUsers(int page, int pageSize)
+QVector<UserRecord> PIP::listUsers(int page, int pageSize)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT id, username, password_hash, salt, full_name, position, is_active, "
@@ -212,14 +212,14 @@ QVector<UserRecord> DbLayer::listUsers(int page, int pageSize)
     return users;
 }
 
-int DbLayer::countUsers()
+int PIP::countUsers()
 {
     QSqlQuery q(m_db);
     q.exec(QStringLiteral("SELECT count(*) FROM users"));
     return q.next() ? q.value(0).toInt() : 0;
 }
 
-bool DbLayer::incrementFailedAttempts(qint64 userId)
+bool PIP::incrementFailedAttempts(qint64 userId)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE users SET failed_attempts = failed_attempts + 1 WHERE id = :id"));
@@ -227,7 +227,7 @@ bool DbLayer::incrementFailedAttempts(qint64 userId)
     return q.exec();
 }
 
-bool DbLayer::resetFailedAttempts(qint64 userId)
+bool PIP::resetFailedAttempts(qint64 userId)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = :id"));
@@ -235,7 +235,7 @@ bool DbLayer::resetFailedAttempts(qint64 userId)
     return q.exec();
 }
 
-bool DbLayer::lockUser(qint64 userId, int minutes)
+bool PIP::lockUser(qint64 userId, int minutes)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE users SET locked_until = now() + (:minutes || ' minutes')::interval "
@@ -245,7 +245,7 @@ bool DbLayer::lockUser(qint64 userId, int minutes)
     return q.exec();
 }
 
-bool DbLayer::updateLastLogin(qint64 userId)
+bool PIP::updateLastLogin(qint64 userId)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE users SET last_login_at = now() WHERE id = :id"));
@@ -257,7 +257,7 @@ bool DbLayer::updateLastLogin(qint64 userId)
 // Subject attrs
 // ---------------------------------------------------------------------------
 
-std::optional<SubjectAttrs> DbLayer::getSubjectAttrs(qint64 userId)
+std::optional<SubjectAttrs> PIP::getSubjectAttrs(qint64 userId)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT user_id, role, clearance_level, department FROM subject_attrs "
@@ -277,7 +277,7 @@ std::optional<SubjectAttrs> DbLayer::getSubjectAttrs(qint64 userId)
     return a;
 }
 
-bool DbLayer::updateSubjectAttrs(qint64 userId, const QString& role, int clearanceLevel, const QString& department)
+bool PIP::updateSubjectAttrs(qint64 userId, const QString& role, int clearanceLevel, const QString& department)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE subject_attrs SET role = :role, clearance_level = :clearance_level, "
@@ -293,7 +293,7 @@ bool DbLayer::updateSubjectAttrs(qint64 userId, const QString& role, int clearan
 // Sessions
 // ---------------------------------------------------------------------------
 
-qint64 DbLayer::createSession(qint64 userId, const QString& tokenHash, int lifetimeHours)
+qint64 PIP::createSession(qint64 userId, const QString& tokenHash, int lifetimeHours)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("INSERT INTO sessions (user_id, token_hash, expires_at) "
@@ -310,7 +310,7 @@ qint64 DbLayer::createSession(qint64 userId, const QString& tokenHash, int lifet
     return q.value(0).toLongLong();
 }
 
-std::optional<SessionRecord> DbLayer::findSessionByTokenHash(const QString& tokenHash)
+std::optional<SessionRecord> PIP::findSessionByTokenHash(const QString& tokenHash)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT id, user_id, token_hash, created_at, expires_at, revoked_at "
@@ -333,7 +333,7 @@ std::optional<SessionRecord> DbLayer::findSessionByTokenHash(const QString& toke
     return s;
 }
 
-bool DbLayer::revokeSession(qint64 sessionId)
+bool PIP::revokeSession(qint64 sessionId)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE sessions SET revoked_at = now() WHERE id = :id AND revoked_at IS NULL"));
@@ -341,7 +341,7 @@ bool DbLayer::revokeSession(qint64 sessionId)
     return q.exec();
 }
 
-bool DbLayer::revokeAllSessions(qint64 userId)
+bool PIP::revokeAllSessions(qint64 userId)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE sessions SET revoked_at = now() WHERE user_id = :user_id AND revoked_at IS NULL"));
@@ -349,7 +349,7 @@ bool DbLayer::revokeAllSessions(qint64 userId)
     return q.exec();
 }
 
-int DbLayer::countActiveSessions()
+int PIP::countActiveSessions()
 {
     QSqlQuery q(m_db);
     q.exec(QStringLiteral("SELECT count(*) FROM sessions WHERE expires_at > now() AND revoked_at IS NULL"));
@@ -360,8 +360,8 @@ int DbLayer::countActiveSessions()
 // Resources
 // ---------------------------------------------------------------------------
 
-qint64 DbLayer::createResource(const QString& name, const QString& description, const QString& resourceType,
-                               const QString& address, qint64 ownerId)
+qint64 PIP::createResource(const QString& name, const QString& description, const QString& resourceType,
+                           const QString& address, qint64 ownerId)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("INSERT INTO resources (name, description, resource_type, address, owner_id) "
@@ -380,7 +380,7 @@ qint64 DbLayer::createResource(const QString& name, const QString& description, 
     return q.value(0).toLongLong();
 }
 
-std::optional<ResourceRecord> DbLayer::getResource(qint64 id)
+std::optional<ResourceRecord> PIP::getResource(qint64 id)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT id, name, description, resource_type, address, owner_id, is_active "
@@ -403,8 +403,8 @@ std::optional<ResourceRecord> DbLayer::getResource(qint64 id)
     return r;
 }
 
-bool DbLayer::updateResource(qint64 id, const QString& name, const QString& description, const QString& resourceType,
-                             const QString& address, bool isActive)
+bool PIP::updateResource(qint64 id, const QString& name, const QString& description, const QString& resourceType,
+                         const QString& address, bool isActive)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE resources SET name = :name, description = :description, "
@@ -419,7 +419,7 @@ bool DbLayer::updateResource(qint64 id, const QString& name, const QString& desc
     return q.exec();
 }
 
-bool DbLayer::deleteResource(qint64 id)
+bool PIP::deleteResource(qint64 id)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("DELETE FROM resources WHERE id = :id"));
@@ -427,7 +427,7 @@ bool DbLayer::deleteResource(qint64 id)
     return q.exec();
 }
 
-QVector<ResourceRecord> DbLayer::listResources(const QString& type, int page, int pageSize)
+QVector<ResourceRecord> PIP::listResources(const QString& type, int page, int pageSize)
 {
     QSqlQuery q(m_db);
     if (type.isEmpty())
@@ -461,7 +461,7 @@ QVector<ResourceRecord> DbLayer::listResources(const QString& type, int page, in
     return resources;
 }
 
-int DbLayer::countResources(const QString& type)
+int PIP::countResources(const QString& type)
 {
     QSqlQuery q(m_db);
     if (type.isEmpty())
@@ -481,9 +481,9 @@ int DbLayer::countResources(const QString& type)
 // Policies
 // ---------------------------------------------------------------------------
 
-qint64 DbLayer::createPolicy(const QString& name, const QString& action, bool enabled, int priority,
-                             const QString& roleRequired, const QString& departmentRequired, int minClearance,
-                             const QString& resourceType, qint64 subjectId, qint64 resourceId, qint64 createdBy)
+qint64 PIP::createPolicy(const QString& name, const QString& action, bool enabled, int priority,
+                         const QString& roleRequired, const QString& departmentRequired, int minClearance,
+                         const QString& resourceType, qint64 subjectId, qint64 resourceId, qint64 createdBy)
 {
     QSqlQuery q(m_db);
     q.prepare(
@@ -511,7 +511,7 @@ qint64 DbLayer::createPolicy(const QString& name, const QString& action, bool en
     return q.value(0).toLongLong();
 }
 
-std::optional<PolicyRecord> DbLayer::getPolicy(qint64 id)
+std::optional<PolicyRecord> PIP::getPolicy(qint64 id)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT id, name, enabled, action, role_required, department_required, "
@@ -540,9 +540,9 @@ std::optional<PolicyRecord> DbLayer::getPolicy(qint64 id)
     return p;
 }
 
-bool DbLayer::updatePolicy(qint64 id, const QString& name, const QString& action, bool enabled, int priority,
-                           const QString& roleRequired, const QString& departmentRequired, int minClearance,
-                           const QString& resourceType, qint64 subjectId, qint64 resourceId)
+bool PIP::updatePolicy(qint64 id, const QString& name, const QString& action, bool enabled, int priority,
+                       const QString& roleRequired, const QString& departmentRequired, int minClearance,
+                       const QString& resourceType, qint64 subjectId, qint64 resourceId)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("UPDATE policies SET name = :name, action = :action, enabled = :enabled, "
@@ -564,7 +564,7 @@ bool DbLayer::updatePolicy(qint64 id, const QString& name, const QString& action
     return q.exec();
 }
 
-bool DbLayer::deletePolicy(qint64 id)
+bool PIP::deletePolicy(qint64 id)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("DELETE FROM policies WHERE id = :id"));
@@ -572,7 +572,7 @@ bool DbLayer::deletePolicy(qint64 id)
     return q.exec();
 }
 
-QVector<PolicyRecord> DbLayer::listPolicies(int page, int pageSize)
+QVector<PolicyRecord> PIP::listPolicies(int page, int pageSize)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT id, name, enabled, action, role_required, department_required, "
@@ -603,14 +603,14 @@ QVector<PolicyRecord> DbLayer::listPolicies(int page, int pageSize)
     return policies;
 }
 
-int DbLayer::countPolicies()
+int PIP::countPolicies()
 {
     QSqlQuery q(m_db);
     q.exec(QStringLiteral("SELECT count(*) FROM policies"));
     return q.next() ? q.value(0).toInt() : 0;
 }
 
-QVector<PolicyRecord> DbLayer::findEnabledPolicies(const QString& action)
+QVector<PolicyRecord> PIP::findEnabledPolicies(const QString& action)
 {
     QSqlQuery q(m_db);
     q.prepare(QStringLiteral("SELECT id, name, enabled, action, role_required, department_required, "
@@ -645,8 +645,8 @@ QVector<PolicyRecord> DbLayer::findEnabledPolicies(const QString& action)
 // Audit
 // ---------------------------------------------------------------------------
 
-void DbLayer::writeAuditLog(qint64 actorId, const QString& actorName, const QString& action, const QString& targetType,
-                            qint64 targetId, const QString& result, const QString& details)
+void PIP::writeAuditLog(qint64 actorId, const QString& actorName, const QString& action, const QString& targetType,
+                        qint64 targetId, const QString& result, const QString& details)
 {
     QSqlQuery q(m_db);
     q.prepare(
@@ -662,7 +662,7 @@ void DbLayer::writeAuditLog(qint64 actorId, const QString& actorName, const QStr
     q.exec();
 }
 
-QVector<AuditRecord> DbLayer::queryAuditLog(const AuditFilter& filter)
+QVector<AuditRecord> PIP::queryAuditLog(const AuditFilter& filter)
 {
     QString sql = "SELECT id, ts, actor_id, actor_name, action, target_type, target_id, result, details "
                   "FROM audit_log WHERE 1=1";
@@ -727,7 +727,7 @@ QVector<AuditRecord> DbLayer::queryAuditLog(const AuditFilter& filter)
     return records;
 }
 
-int DbLayer::countAuditLog(const AuditFilter& filter)
+int PIP::countAuditLog(const AuditFilter& filter)
 {
     QString sql = "SELECT count(*) FROM audit_log WHERE 1=1";
 
@@ -771,4 +771,4 @@ int DbLayer::countAuditLog(const AuditFilter& filter)
     return q.next() ? q.value(0).toInt() : 0;
 }
 
-} // namespace db
+} // namespace pip

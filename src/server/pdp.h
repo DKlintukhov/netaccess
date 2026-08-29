@@ -1,9 +1,9 @@
 /**
- * @file policy_engine.h
- * @brief ABAC policy evaluation engine backed by PostgreSQL.
+ * @file pdp.h
+ * @brief Policy Decision Point (PDP) — evaluates ABAC access requests.
  *
- * Loads policies from the database and evaluates access decisions.
- * Pure ABAC: deny by default.
+ * Loads policies from the database (via PIP) and evaluates access decisions.
+ * Pure ABAC: deny by default.  Deny-overrides on conflict.
  */
 
 #pragma once
@@ -11,9 +11,9 @@
 #include <QString>
 #include <QVector>
 
-#include <server/db_layer.h>
+#include <server/pip.h>
 
-namespace policy
+namespace pdp
 {
 
 /**
@@ -26,12 +26,12 @@ struct Decision
 };
 
 /**
- * @brief ABAC policy engine.
+ * @brief Policy Decision Point — evaluates ABAC policies.
  */
-class PolicyEngine
+class PDP
 {
 public:
-    explicit PolicyEngine(db::DbLayer& db);
+    explicit PDP(pip::PIP& pip);
 
     /**
      * @brief Evaluates an access request.
@@ -45,14 +45,14 @@ public:
     Decision evaluate(qint64 userId, qint64 resourceId, const QString& action, const QString& resourceType);
 
     /// Policy management.
-    QVector<db::PolicyRecord> listPolicies(int page = 1, int pageSize = 50);
+    QVector<pip::PolicyRecord> listPolicies(int page = 1, int pageSize = 50);
     int countPolicies();
-    qint64 createPolicy(const db::PolicyRecord& policy, qint64 createdBy);
-    bool updatePolicy(qint64 id, const db::PolicyRecord& policy);
+    qint64 createPolicy(const pip::PolicyRecord& policy, qint64 createdBy);
+    bool updatePolicy(qint64 id, const pip::PolicyRecord& policy);
     bool deletePolicy(qint64 id);
 
 private:
-    db::DbLayer& m_db;
+    pip::PIP& m_pip;
 };
 
-} // namespace policy
+} // namespace pdp

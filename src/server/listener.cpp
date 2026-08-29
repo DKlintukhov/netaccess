@@ -9,8 +9,8 @@
 namespace server
 {
 
-Listener::Listener(const ServerConfig& cfg, handlers::Handler& handler, QObject* parent)
-    : QObject(parent), m_cfg(cfg), m_handler(handler), m_server(new QTcpServer(this))
+Listener::Listener(const ServerConfig& cfg, pep::PEP& pep, QObject* parent)
+    : QObject(parent), m_cfg(cfg), m_pep(pep), m_server(new QTcpServer(this))
 {
     connect(m_server, &QTcpServer::newConnection, this, &Listener::onNewConnection);
 }
@@ -168,7 +168,7 @@ void Listener::processRequest(QSslSocket* socket)
         return;
     }
 
-    auto response = m_handler.handle(*request);
+    auto response = m_pep.handle(*request);
     socket->write(protocol::frame(response.toJson()));
     socket->flush();
 }

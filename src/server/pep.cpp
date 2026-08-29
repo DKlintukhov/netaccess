@@ -1,14 +1,13 @@
-#include <server/handlers.h>
+#include <server/pep.h>
 
 #include <QJsonArray>
 #include <QJsonDocument>
 
-namespace handlers
+namespace pep
 {
 
-Handler::Handler(db::DbLayer& db, auth::Authenticator& auth, session::SessionManager& sessions,
-                 policy::PolicyEngine& policy)
-    : m_db(db), m_auth(auth), m_sessions(sessions), m_policy(policy)
+PEP::PEP(pip::PIP& pip, auth::Authenticator& auth, session::SessionManager& sessions, pdp::PDP& pdp)
+    : m_pip(pip), m_auth(auth), m_sessions(sessions), m_pdp(pdp)
 {
 }
 
@@ -16,7 +15,7 @@ Handler::Handler(db::DbLayer& db, auth::Authenticator& auth, session::SessionMan
 // Helpers
 // ---------------------------------------------------------------------------
 
-std::optional<qint64> Handler::validateToken(const QString& token)
+std::optional<qint64> PEP::validateToken(const QString& token)
 {
     auto attrs = m_auth.verifyToken(token);
     if (!attrs)
@@ -26,7 +25,7 @@ std::optional<qint64> Handler::validateToken(const QString& token)
     return attrs->user_id;
 }
 
-protocol::Response Handler::denied(protocol::Op op, int reqId, protocol::ResultCode code, const QString& message)
+protocol::Response PEP::denied(protocol::Op op, int reqId, protocol::ResultCode code, const QString& message)
 {
     protocol::Response resp;
     resp.op = op;
@@ -37,7 +36,7 @@ protocol::Response Handler::denied(protocol::Op op, int reqId, protocol::ResultC
     return resp;
 }
 
-protocol::Response Handler::error(protocol::Op op, int reqId, protocol::ResultCode code, const QString& message)
+protocol::Response PEP::error(protocol::Op op, int reqId, protocol::ResultCode code, const QString& message)
 {
     protocol::Response resp;
     resp.op = op;
@@ -48,7 +47,7 @@ protocol::Response Handler::error(protocol::Op op, int reqId, protocol::ResultCo
     return resp;
 }
 
-protocol::Response Handler::ok(protocol::Op op, int reqId, const QJsonObject& data, const QString& message)
+protocol::Response PEP::ok(protocol::Op op, int reqId, const QJsonObject& data, const QString& message)
 {
     protocol::Response resp;
     resp.op = op;
@@ -60,9 +59,9 @@ protocol::Response Handler::ok(protocol::Op op, int reqId, const QJsonObject& da
     return resp;
 }
 
-bool Handler::checkAccess(qint64 userId, qint64 resourceId, const QString& action, const QString& resourceType)
+bool PEP::checkAccess(qint64 userId, qint64 resourceId, const QString& action, const QString& resourceType)
 {
-    auto decision = m_policy.evaluate(userId, resourceId, action, resourceType);
+    auto decision = m_pdp.evaluate(userId, resourceId, action, resourceType);
     return decision.allowed;
 }
 
@@ -70,7 +69,7 @@ bool Handler::checkAccess(qint64 userId, qint64 resourceId, const QString& actio
 // Dispatch
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handle(const protocol::Request& req)
+protocol::Response PEP::handle(const protocol::Request& req)
 {
     // AUTH is the only operation that doesn't require a token.
     if (req.op == protocol::Op::AUTH)
@@ -137,7 +136,7 @@ protocol::Response Handler::handle(const protocol::Request& req)
 // AUTH
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleAuth(const protocol::Request& req)
+protocol::Response PEP::handleAuth(const protocol::Request& req)
 {
     const QString username = req.data["username"].toString();
     const QString password = req.data["password"].toString();
@@ -168,8 +167,8 @@ protocol::Response Handler::handleAuth(const protocol::Request& req)
     data["token"] = result.token;
     data["user"] = userData;
 
-    m_db.writeAuditLog(result.user_id, result.username, QStringLiteral("AUTH_SUCCESS"), QStringLiteral("user"),
-                       result.user_id, QStringLiteral("ok"));
+    m_pip.writeAuditLog(result.user_id, result.username, QStringLiteral("AUTH_SUCCESS"), QStringLiteral("user"),
+                        result.user_id, QStringLiteral("ok"));
 
     return ok(req.op, req.req_id, data);
 }
@@ -178,7 +177,7 @@ protocol::Response Handler::handleAuth(const protocol::Request& req)
 // LOGOUT
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleLogout(const protocol::Request& req)
+protocol::Response PEP::handleLogout(const protocol::Request& req)
 {
     m_auth.logout(req.token);
     return ok(req.op, req.req_id);
@@ -188,7 +187,7 @@ protocol::Response Handler::handleLogout(const protocol::Request& req)
 // ME
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleMe(const protocol::Request& req)
+protocol::Response PEP::handleMe(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -196,13 +195,13 @@ protocol::Response Handler::handleMe(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto user = m_db.findUserById(*userId);
+    auto user = m_pip.findUserById(*userId);
     if (!user)
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR, QStringLiteral("User not found"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
 
     QJsonObject data;
     data["id"] = user->id;
@@ -221,7 +220,7 @@ protocol::Response Handler::handleMe(const protocol::Request& req)
 // RESOURCE_LIST
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleResourceList(const protocol::Request& req)
+protocol::Response PEP::handleResourceList(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -229,7 +228,7 @@ protocol::Response Handler::handleResourceList(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs)
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR, QStringLiteral("No subject attributes"));
@@ -240,8 +239,8 @@ protocol::Response Handler::handleResourceList(const protocol::Request& req)
     const int page = req.data["page"].toInt(1);
     const int pageSize = req.data["page_size"].toInt(50);
 
-    auto resources = m_db.listResources(typeFilter, page, pageSize);
-    int total = m_db.countResources(typeFilter);
+    auto resources = m_pip.listResources(typeFilter, page, pageSize);
+    int total = m_pip.countResources(typeFilter);
 
     QJsonArray items;
     for (const auto& r : resources)
@@ -249,7 +248,7 @@ protocol::Response Handler::handleResourceList(const protocol::Request& req)
         // For regular users, check if they have at least read access.
         if (attrs->role == QStringLiteral("user"))
         {
-            auto decision = m_policy.evaluate(*userId, r.id, QStringLiteral("read"), r.resource_type);
+            auto decision = m_pdp.evaluate(*userId, r.id, QStringLiteral("read"), r.resource_type);
             if (!decision.allowed)
             {
                 continue;
@@ -278,7 +277,7 @@ protocol::Response Handler::handleResourceList(const protocol::Request& req)
 // RESOURCE_GET
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleResourceGet(const protocol::Request& req)
+protocol::Response PEP::handleResourceGet(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -292,7 +291,7 @@ protocol::Response Handler::handleResourceGet(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::VALIDATION_ERROR, QStringLiteral("Missing resource_id"));
     }
 
-    auto resource = m_db.getResource(resourceId);
+    auto resource = m_pip.getResource(resourceId);
     if (!resource)
     {
         return denied(req.op, req.req_id, protocol::ResultCode::RESOURCE_NOT_FOUND,
@@ -315,7 +314,7 @@ protocol::Response Handler::handleResourceGet(const protocol::Request& req)
 // RESOURCE_CREATE (admin only)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleResourceCreate(const protocol::Request& req)
+protocol::Response PEP::handleResourceCreate(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -323,7 +322,7 @@ protocol::Response Handler::handleResourceCreate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -340,15 +339,15 @@ protocol::Response Handler::handleResourceCreate(const protocol::Request& req)
                      QStringLiteral("Missing name or resource_type"));
     }
 
-    qint64 id = m_db.createResource(name, description, resourceType, address, *userId);
+    qint64 id = m_pip.createResource(name, description, resourceType, address, *userId);
     if (id < 0)
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR,
                      QStringLiteral("Failed to create resource"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("RESOURCE_CREATE"), QStringLiteral("resource"), id,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("RESOURCE_CREATE"), QStringLiteral("resource"), id,
+                        QStringLiteral("ok"));
 
     QJsonObject data;
     data["id"] = id;
@@ -359,7 +358,7 @@ protocol::Response Handler::handleResourceCreate(const protocol::Request& req)
 // RESOURCE_UPDATE (admin only)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleResourceUpdate(const protocol::Request& req)
+protocol::Response PEP::handleResourceUpdate(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -367,7 +366,7 @@ protocol::Response Handler::handleResourceUpdate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -379,7 +378,7 @@ protocol::Response Handler::handleResourceUpdate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::VALIDATION_ERROR, QStringLiteral("Missing resource_id"));
     }
 
-    auto resource = m_db.getResource(resourceId);
+    auto resource = m_pip.getResource(resourceId);
     if (!resource)
     {
         return denied(req.op, req.req_id, protocol::ResultCode::RESOURCE_NOT_FOUND,
@@ -392,14 +391,14 @@ protocol::Response Handler::handleResourceUpdate(const protocol::Request& req)
     const QString address = req.data["address"].toString(resource->address);
     const bool isActive = req.data["is_active"].toBool(resource->is_active);
 
-    if (!m_db.updateResource(resourceId, name, description, resourceType, address, isActive))
+    if (!m_pip.updateResource(resourceId, name, description, resourceType, address, isActive))
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR,
                      QStringLiteral("Failed to update resource"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("RESOURCE_UPDATE"), QStringLiteral("resource"), resourceId,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("RESOURCE_UPDATE"), QStringLiteral("resource"), resourceId,
+                        QStringLiteral("ok"));
 
     return ok(req.op, req.req_id);
 }
@@ -408,7 +407,7 @@ protocol::Response Handler::handleResourceUpdate(const protocol::Request& req)
 // RESOURCE_DELETE (admin only)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleResourceDelete(const protocol::Request& req)
+protocol::Response PEP::handleResourceDelete(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -416,7 +415,7 @@ protocol::Response Handler::handleResourceDelete(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -428,14 +427,14 @@ protocol::Response Handler::handleResourceDelete(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::VALIDATION_ERROR, QStringLiteral("Missing resource_id"));
     }
 
-    if (!m_db.deleteResource(resourceId))
+    if (!m_pip.deleteResource(resourceId))
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR,
                      QStringLiteral("Failed to delete resource"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("RESOURCE_DELETE"), QStringLiteral("resource"), resourceId,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("RESOURCE_DELETE"), QStringLiteral("resource"), resourceId,
+                        QStringLiteral("ok"));
 
     return ok(req.op, req.req_id);
 }
@@ -444,7 +443,7 @@ protocol::Response Handler::handleResourceDelete(const protocol::Request& req)
 // POLICY_LIST (admin, auditor)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handlePolicyList(const protocol::Request& req)
+protocol::Response PEP::handlePolicyList(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -452,7 +451,7 @@ protocol::Response Handler::handlePolicyList(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || (attrs->role != QStringLiteral("admin") && attrs->role != QStringLiteral("auditor")))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED,
@@ -462,8 +461,8 @@ protocol::Response Handler::handlePolicyList(const protocol::Request& req)
     const int page = req.data["page"].toInt(1);
     const int pageSize = req.data["page_size"].toInt(50);
 
-    auto policies = m_policy.listPolicies(page, pageSize);
-    int total = m_policy.countPolicies();
+    auto policies = m_pdp.listPolicies(page, pageSize);
+    int total = m_pdp.countPolicies();
 
     QJsonArray items;
     for (const auto& p : policies)
@@ -494,7 +493,7 @@ protocol::Response Handler::handlePolicyList(const protocol::Request& req)
 // POLICY_CREATE (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handlePolicyCreate(const protocol::Request& req)
+protocol::Response PEP::handlePolicyCreate(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -502,7 +501,7 @@ protocol::Response Handler::handlePolicyCreate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -516,7 +515,7 @@ protocol::Response Handler::handlePolicyCreate(const protocol::Request& req)
                      QStringLiteral("Missing name or action"));
     }
 
-    db::PolicyRecord p;
+    pip::PolicyRecord p;
     p.name = name;
     p.action = action;
     p.enabled = req.data["enabled"].toBool(true);
@@ -528,15 +527,15 @@ protocol::Response Handler::handlePolicyCreate(const protocol::Request& req)
     p.subject_id = req.data["subject_id"].toVariant().toLongLong(0);
     p.resource_id = req.data["resource_id"].toVariant().toLongLong(0);
 
-    qint64 id = m_policy.createPolicy(p, *userId);
+    qint64 id = m_pdp.createPolicy(p, *userId);
     if (id < 0)
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR,
                      QStringLiteral("Failed to create policy"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("POLICY_CREATE"), QStringLiteral("policy"), id,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("POLICY_CREATE"), QStringLiteral("policy"), id,
+                        QStringLiteral("ok"));
 
     QJsonObject data;
     data["id"] = id;
@@ -547,7 +546,7 @@ protocol::Response Handler::handlePolicyCreate(const protocol::Request& req)
 // POLICY_UPDATE (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handlePolicyUpdate(const protocol::Request& req)
+protocol::Response PEP::handlePolicyUpdate(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -555,7 +554,7 @@ protocol::Response Handler::handlePolicyUpdate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -567,8 +566,8 @@ protocol::Response Handler::handlePolicyUpdate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::VALIDATION_ERROR, QStringLiteral("Missing policy_id"));
     }
 
-    auto existing = m_policy.listPolicies(1, 999999);
-    const db::PolicyRecord* found = nullptr;
+    auto existing = m_pdp.listPolicies(1, 999999);
+    const pip::PolicyRecord* found = nullptr;
     for (const auto& p : existing)
     {
         if (p.id == policyId)
@@ -582,7 +581,7 @@ protocol::Response Handler::handlePolicyUpdate(const protocol::Request& req)
         return denied(req.op, req.req_id, protocol::ResultCode::RESOURCE_NOT_FOUND, QStringLiteral("Policy not found"));
     }
 
-    db::PolicyRecord p = *found;
+    pip::PolicyRecord p = *found;
     if (req.data.contains("name"))
         p.name = req.data["name"].toString();
     if (req.data.contains("action"))
@@ -604,14 +603,14 @@ protocol::Response Handler::handlePolicyUpdate(const protocol::Request& req)
     if (req.data.contains("resource_id"))
         p.resource_id = req.data["resource_id"].toVariant().toLongLong(0);
 
-    if (!m_policy.updatePolicy(policyId, p))
+    if (!m_pdp.updatePolicy(policyId, p))
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR,
                      QStringLiteral("Failed to update policy"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("POLICY_UPDATE"), QStringLiteral("policy"), policyId,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("POLICY_UPDATE"), QStringLiteral("policy"), policyId,
+                        QStringLiteral("ok"));
 
     return ok(req.op, req.req_id);
 }
@@ -620,7 +619,7 @@ protocol::Response Handler::handlePolicyUpdate(const protocol::Request& req)
 // POLICY_DELETE (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handlePolicyDelete(const protocol::Request& req)
+protocol::Response PEP::handlePolicyDelete(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -628,7 +627,7 @@ protocol::Response Handler::handlePolicyDelete(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -640,14 +639,14 @@ protocol::Response Handler::handlePolicyDelete(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::VALIDATION_ERROR, QStringLiteral("Missing policy_id"));
     }
 
-    if (!m_policy.deletePolicy(policyId))
+    if (!m_pdp.deletePolicy(policyId))
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR,
                      QStringLiteral("Failed to delete policy"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("POLICY_DELETE"), QStringLiteral("policy"), policyId,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("POLICY_DELETE"), QStringLiteral("policy"), policyId,
+                        QStringLiteral("ok"));
 
     return ok(req.op, req.req_id);
 }
@@ -656,7 +655,7 @@ protocol::Response Handler::handlePolicyDelete(const protocol::Request& req)
 // USER_LIST (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleUserList(const protocol::Request& req)
+protocol::Response PEP::handleUserList(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -664,7 +663,7 @@ protocol::Response Handler::handleUserList(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -673,13 +672,13 @@ protocol::Response Handler::handleUserList(const protocol::Request& req)
     const int page = req.data["page"].toInt(1);
     const int pageSize = req.data["page_size"].toInt(50);
 
-    auto users = m_db.listUsers(page, pageSize);
-    int total = m_db.countUsers();
+    auto users = m_pip.listUsers(page, pageSize);
+    int total = m_pip.countUsers();
 
     QJsonArray items;
     for (const auto& u : users)
     {
-        auto sa = m_db.getSubjectAttrs(u.id);
+        auto sa = m_pip.getSubjectAttrs(u.id);
         QJsonObject obj;
         obj["id"] = u.id;
         obj["username"] = u.username;
@@ -703,7 +702,7 @@ protocol::Response Handler::handleUserList(const protocol::Request& req)
 // USER_CREATE (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleUserCreate(const protocol::Request& req)
+protocol::Response PEP::handleUserCreate(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -711,7 +710,7 @@ protocol::Response Handler::handleUserCreate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -738,14 +737,14 @@ protocol::Response Handler::handleUserCreate(const protocol::Request& req)
     const QString position = req.data["position"].toString();
 
     qint64 newUserId =
-        m_db.createUser(username, passwordHash, salt, fullName, position, role, clearanceLevel, department);
+        m_pip.createUser(username, passwordHash, salt, fullName, position, role, clearanceLevel, department);
     if (newUserId < 0)
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR, QStringLiteral("Failed to create user"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("USER_CREATE"), QStringLiteral("user"), newUserId,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("USER_CREATE"), QStringLiteral("user"), newUserId,
+                        QStringLiteral("ok"));
 
     QJsonObject data;
     data["id"] = newUserId;
@@ -756,7 +755,7 @@ protocol::Response Handler::handleUserCreate(const protocol::Request& req)
 // USER_UPDATE (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleUserUpdate(const protocol::Request& req)
+protocol::Response PEP::handleUserUpdate(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -764,7 +763,7 @@ protocol::Response Handler::handleUserUpdate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -776,7 +775,7 @@ protocol::Response Handler::handleUserUpdate(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::VALIDATION_ERROR, QStringLiteral("Missing user_id"));
     }
 
-    auto target = m_db.findUserById(targetUserId);
+    auto target = m_pip.findUserById(targetUserId);
     if (!target)
     {
         return denied(req.op, req.req_id, protocol::ResultCode::RESOURCE_NOT_FOUND, QStringLiteral("User not found"));
@@ -786,7 +785,7 @@ protocol::Response Handler::handleUserUpdate(const protocol::Request& req)
     const QString position = req.data["position"].toString(target->position);
     const bool isActive = req.data["is_active"].toBool(target->is_active);
 
-    if (!m_db.updateUser(targetUserId, fullName, position, isActive))
+    if (!m_pip.updateUser(targetUserId, fullName, position, isActive))
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR, QStringLiteral("Failed to update user"));
     }
@@ -794,18 +793,18 @@ protocol::Response Handler::handleUserUpdate(const protocol::Request& req)
     // Update subject attrs if provided.
     if (req.data.contains("role") || req.data.contains("clearance_level") || req.data.contains("department"))
     {
-        auto sa = m_db.getSubjectAttrs(targetUserId);
+        auto sa = m_pip.getSubjectAttrs(targetUserId);
         if (sa)
         {
             const QString newRole = req.data["role"].toString(sa->role);
             const int newClearance = req.data["clearance_level"].toInt(sa->clearance_level);
             const QString newDept = req.data["department"].toString(sa->department);
-            m_db.updateSubjectAttrs(targetUserId, newRole, newClearance, newDept);
+            m_pip.updateSubjectAttrs(targetUserId, newRole, newClearance, newDept);
         }
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("USER_UPDATE"), QStringLiteral("user"), targetUserId,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("USER_UPDATE"), QStringLiteral("user"), targetUserId,
+                        QStringLiteral("ok"));
 
     return ok(req.op, req.req_id);
 }
@@ -814,7 +813,7 @@ protocol::Response Handler::handleUserUpdate(const protocol::Request& req)
 // USER_DELETE (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleUserDelete(const protocol::Request& req)
+protocol::Response PEP::handleUserDelete(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -822,7 +821,7 @@ protocol::Response Handler::handleUserDelete(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -840,13 +839,13 @@ protocol::Response Handler::handleUserDelete(const protocol::Request& req)
                      QStringLiteral("Cannot delete yourself"));
     }
 
-    if (!m_db.deleteUser(targetUserId))
+    if (!m_pip.deleteUser(targetUserId))
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR, QStringLiteral("Failed to delete user"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("USER_DELETE"), QStringLiteral("user"), targetUserId,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("USER_DELETE"), QStringLiteral("user"), targetUserId,
+                        QStringLiteral("ok"));
 
     return ok(req.op, req.req_id);
 }
@@ -855,7 +854,7 @@ protocol::Response Handler::handleUserDelete(const protocol::Request& req)
 // ACCESS_CHECK
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleAccessCheck(const protocol::Request& req)
+protocol::Response PEP::handleAccessCheck(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -872,14 +871,14 @@ protocol::Response Handler::handleAccessCheck(const protocol::Request& req)
                      QStringLiteral("Missing resource_id or action"));
     }
 
-    auto resource = m_db.getResource(resourceId);
+    auto resource = m_pip.getResource(resourceId);
     if (!resource)
     {
         return denied(req.op, req.req_id, protocol::ResultCode::RESOURCE_NOT_FOUND,
                       QStringLiteral("Resource not found"));
     }
 
-    auto decision = m_policy.evaluate(*userId, resourceId, action, resource->resource_type);
+    auto decision = m_pdp.evaluate(*userId, resourceId, action, resource->resource_type);
 
     if (decision.allowed)
     {
@@ -893,7 +892,7 @@ protocol::Response Handler::handleAccessCheck(const protocol::Request& req)
 // GRANT_ACCESS (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleGrantAccess(const protocol::Request& req)
+protocol::Response PEP::handleGrantAccess(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -901,7 +900,7 @@ protocol::Response Handler::handleGrantAccess(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -918,14 +917,14 @@ protocol::Response Handler::handleGrantAccess(const protocol::Request& req)
     }
 
     // Verify subject and resource exist.
-    auto subject = m_db.findUserById(subjectId);
+    auto subject = m_pip.findUserById(subjectId);
     if (!subject)
     {
         return denied(req.op, req.req_id, protocol::ResultCode::RESOURCE_NOT_FOUND,
                       QStringLiteral("Subject user not found"));
     }
 
-    auto resource = m_db.getResource(resourceId);
+    auto resource = m_pip.getResource(resourceId);
     if (!resource)
     {
         return denied(req.op, req.req_id, protocol::ResultCode::RESOURCE_NOT_FOUND,
@@ -933,7 +932,7 @@ protocol::Response Handler::handleGrantAccess(const protocol::Request& req)
     }
 
     // Create a specific policy for this grant.
-    db::PolicyRecord p;
+    pip::PolicyRecord p;
     p.name = QStringLiteral("grant-%1-%2-%3").arg(subjectId).arg(resourceId).arg(action);
     p.action = action;
     p.enabled = true;
@@ -941,14 +940,14 @@ protocol::Response Handler::handleGrantAccess(const protocol::Request& req)
     p.subject_id = subjectId;
     p.resource_id = resourceId;
 
-    qint64 policyId = m_policy.createPolicy(p, *userId);
+    qint64 policyId = m_pdp.createPolicy(p, *userId);
     if (policyId < 0)
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR,
                      QStringLiteral("Failed to create grant policy"));
     }
 
-    m_db.writeAuditLog(
+    m_pip.writeAuditLog(
         *userId, attrs->role, QStringLiteral("POLICY_CREATE"), QStringLiteral("policy"), policyId, QStringLiteral("ok"),
         QStringLiteral("{\"grant\":true,\"subject\":%1,\"resource\":%2}").arg(subjectId).arg(resourceId));
 
@@ -961,7 +960,7 @@ protocol::Response Handler::handleGrantAccess(const protocol::Request& req)
 // REVOKE_ACCESS (admin)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleRevokeAccess(const protocol::Request& req)
+protocol::Response PEP::handleRevokeAccess(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -969,7 +968,7 @@ protocol::Response Handler::handleRevokeAccess(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || attrs->role != QStringLiteral("admin"))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED, QStringLiteral("Admin role required"));
@@ -981,14 +980,14 @@ protocol::Response Handler::handleRevokeAccess(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::VALIDATION_ERROR, QStringLiteral("Missing policy_id"));
     }
 
-    if (!m_policy.deletePolicy(policyId))
+    if (!m_pdp.deletePolicy(policyId))
     {
         return error(req.op, req.req_id, protocol::ResultCode::INTERNAL_ERROR,
                      QStringLiteral("Failed to revoke access"));
     }
 
-    m_db.writeAuditLog(*userId, attrs->role, QStringLiteral("POLICY_DELETE"), QStringLiteral("policy"), policyId,
-                       QStringLiteral("ok"));
+    m_pip.writeAuditLog(*userId, attrs->role, QStringLiteral("POLICY_DELETE"), QStringLiteral("policy"), policyId,
+                        QStringLiteral("ok"));
 
     return ok(req.op, req.req_id);
 }
@@ -997,7 +996,7 @@ protocol::Response Handler::handleRevokeAccess(const protocol::Request& req)
 // AUDIT_QUERY (admin, auditor)
 // ---------------------------------------------------------------------------
 
-protocol::Response Handler::handleAuditQuery(const protocol::Request& req)
+protocol::Response PEP::handleAuditQuery(const protocol::Request& req)
 {
     auto userId = validateToken(req.token);
     if (!userId)
@@ -1005,14 +1004,14 @@ protocol::Response Handler::handleAuditQuery(const protocol::Request& req)
         return error(req.op, req.req_id, protocol::ResultCode::TOKEN_INVALID, QStringLiteral("Invalid token"));
     }
 
-    auto attrs = m_db.getSubjectAttrs(*userId);
+    auto attrs = m_pip.getSubjectAttrs(*userId);
     if (!attrs || (attrs->role != QStringLiteral("admin") && attrs->role != QStringLiteral("auditor")))
     {
         return denied(req.op, req.req_id, protocol::ResultCode::ACCESS_DENIED,
                       QStringLiteral("Admin or auditor role required"));
     }
 
-    db::AuditFilter filter;
+    pip::AuditFilter filter;
     filter.from = req.data["from"].toString();
     filter.to = req.data["to"].toString();
     filter.actor_id = req.data["actor_id"].toVariant().toLongLong(0);
@@ -1020,8 +1019,8 @@ protocol::Response Handler::handleAuditQuery(const protocol::Request& req)
     filter.page = req.data["page"].toInt(1);
     filter.page_size = req.data["page_size"].toInt(100);
 
-    auto records = m_db.queryAuditLog(filter);
-    int total = m_db.countAuditLog(filter);
+    auto records = m_pip.queryAuditLog(filter);
+    int total = m_pip.countAuditLog(filter);
 
     QJsonArray items;
     for (const auto& r : records)
@@ -1049,4 +1048,4 @@ protocol::Response Handler::handleAuditQuery(const protocol::Request& req)
     return ok(req.op, req.req_id, data);
 }
 
-} // namespace handlers
+} // namespace pep

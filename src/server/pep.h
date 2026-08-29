@@ -1,9 +1,10 @@
 /**
- * @file handlers.h
- * @brief Request handlers for all protocol operations.
+ * @file pep.h
+ * @brief Policy Enforcement Point (PEP) — enforces access decisions.
  *
- * Dispatches incoming requests, validates tokens, applies ABAC checks,
- * and returns structured responses.
+ * Dispatches incoming requests, validates tokens, delegates ABAC checks
+ * to the PDP, and returns structured responses.  All protected operations
+ * must pass through the PEP before reaching resource handlers.
  */
 
 #pragma once
@@ -11,21 +12,20 @@
 #include <netaccess/protocol.h>
 
 #include <server/authenticator.h>
-#include <server/db_layer.h>
-#include <server/policy_engine.h>
+#include <server/pdp.h>
+#include <server/pip.h>
 #include <server/session_manager.h>
 
-namespace handlers
+namespace pep
 {
 
 /**
- * @brief Request handler dispatcher.
+ * @brief Policy Enforcement Point — enforces ABAC decisions.
  */
-class Handler
+class PEP
 {
 public:
-    Handler(db::DbLayer& db, auth::Authenticator& auth, session::SessionManager& sessions,
-            policy::PolicyEngine& policy);
+    PEP(pip::PIP& pip, auth::Authenticator& auth, session::SessionManager& sessions, pdp::PDP& pdp);
 
     /**
      * @brief Dispatches a request and returns a response.
@@ -33,10 +33,8 @@ public:
     protocol::Response handle(const protocol::Request& req);
 
 private:
-    // Token validation: extracts user_id from token, returns empty on failure.
     std::optional<qint64> validateToken(const QString& token);
 
-    // Individual handlers.
     protocol::Response handleAuth(const protocol::Request& req);
     protocol::Response handleLogout(const protocol::Request& req);
     protocol::Response handleMe(const protocol::Request& req);
@@ -58,22 +56,15 @@ private:
     protocol::Response handleRevokeAccess(const protocol::Request& req);
     protocol::Response handleAuditQuery(const protocol::Request& req);
 
-    // Helper: create a denied response.
     protocol::Response denied(protocol::Op op, int reqId, protocol::ResultCode code, const QString& message);
-
-    // Helper: create an error response.
     protocol::Response error(protocol::Op op, int reqId, protocol::ResultCode code, const QString& message);
-
-    // Helper: create an ok response.
     protocol::Response ok(protocol::Op op, int reqId, const QJsonObject& data = {}, const QString& message = {});
-
-    // Helper: check ABAC access.
     bool checkAccess(qint64 userId, qint64 resourceId, const QString& action, const QString& resourceType);
 
-    db::DbLayer& m_db;
+    pip::PIP& m_pip;
     auth::Authenticator& m_auth;
     session::SessionManager& m_sessions;
-    policy::PolicyEngine& m_policy;
+    pdp::PDP& m_pdp;
 };
 
-} // namespace handlers
+} // namespace pep

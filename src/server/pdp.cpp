@@ -1,18 +1,17 @@
-#include <server/policy_engine.h>
+#include <server/pdp.h>
 
 #include <QDateTime>
 
-namespace policy
+namespace pdp
 {
 
-PolicyEngine::PolicyEngine(db::DbLayer& db) : m_db(db)
+PDP::PDP(pip::PIP& pip) : m_pip(pip)
 {
 }
 
-Decision PolicyEngine::evaluate(qint64 userId, qint64 resourceId, const QString& action, const QString& resourceType)
+Decision PDP::evaluate(qint64 userId, qint64 resourceId, const QString& action, const QString& resourceType)
 {
-    // 1. Check subject is active.
-    auto user = m_db.findUserById(userId);
+    auto user = m_pip.findUserById(userId);
     if (!user || !user->is_active)
     {
         return {false, QStringLiteral("account_inactive")};
@@ -29,17 +28,17 @@ Decision PolicyEngine::evaluate(qint64 userId, qint64 resourceId, const QString&
     }
 
     // 3. Get subject attributes.
-    auto attrs = m_db.getSubjectAttrs(userId);
+    auto attrs = m_pip.getSubjectAttrs(userId);
     if (!attrs)
     {
         return {false, QStringLiteral("no_subject_attrs")};
     }
 
     // 4. Load enabled policies matching the action (or wildcard '*').
-    auto policies = m_db.findEnabledPolicies(action);
+    auto policies = m_pip.findEnabledPolicies(action);
 
     // 5. Find best matching policy by priority.
-    const db::PolicyRecord* best = nullptr;
+    const pip::PolicyRecord* best = nullptr;
     for (const auto& pol : policies)
     {
         // Check role condition.
@@ -97,33 +96,33 @@ Decision PolicyEngine::evaluate(qint64 userId, qint64 resourceId, const QString&
 // Policy management
 // ---------------------------------------------------------------------------
 
-QVector<db::PolicyRecord> PolicyEngine::listPolicies(int page, int pageSize)
+QVector<pip::PolicyRecord> PDP::listPolicies(int page, int pageSize)
 {
-    return m_db.listPolicies(page, pageSize);
+    return m_pip.listPolicies(page, pageSize);
 }
 
-int PolicyEngine::countPolicies()
+int PDP::countPolicies()
 {
-    return m_db.countPolicies();
+    return m_pip.countPolicies();
 }
 
-qint64 PolicyEngine::createPolicy(const db::PolicyRecord& policy, qint64 createdBy)
+qint64 PDP::createPolicy(const pip::PolicyRecord& policy, qint64 createdBy)
 {
-    return m_db.createPolicy(policy.name, policy.action, policy.enabled, policy.priority, policy.role_required,
-                             policy.department_required, policy.min_clearance, policy.resource_type, policy.subject_id,
-                             policy.resource_id, createdBy);
+    return m_pip.createPolicy(policy.name, policy.action, policy.enabled, policy.priority, policy.role_required,
+                              policy.department_required, policy.min_clearance, policy.resource_type, policy.subject_id,
+                              policy.resource_id, createdBy);
 }
 
-bool PolicyEngine::updatePolicy(qint64 id, const db::PolicyRecord& policy)
+bool PDP::updatePolicy(qint64 id, const pip::PolicyRecord& policy)
 {
-    return m_db.updatePolicy(id, policy.name, policy.action, policy.enabled, policy.priority, policy.role_required,
-                             policy.department_required, policy.min_clearance, policy.resource_type, policy.subject_id,
-                             policy.resource_id);
+    return m_pip.updatePolicy(id, policy.name, policy.action, policy.enabled, policy.priority, policy.role_required,
+                              policy.department_required, policy.min_clearance, policy.resource_type, policy.subject_id,
+                              policy.resource_id);
 }
 
-bool PolicyEngine::deletePolicy(qint64 id)
+bool PDP::deletePolicy(qint64 id)
 {
-    return m_db.deletePolicy(id);
+    return m_pip.deletePolicy(id);
 }
 
-} // namespace policy
+} // namespace pdp
