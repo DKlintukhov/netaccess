@@ -10,7 +10,7 @@ ApplicationWindow {
     height: 768
     title: "netaccess " + netaccessVersion
     background: Image {
-        source: "images/background.jpeg"
+        source: "qrc:/qml/images/background.jpeg"
         fillMode: Image.PreserveAspectCrop
     }
 
