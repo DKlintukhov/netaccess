@@ -67,23 +67,23 @@ Page {
         currentIndex: tabBar.currentIndex
 
         ResourceListPage {
-            apiClient: apiClient
-            sessionState: sessionState
+            apiClient: mainPage.apiClient
+            sessionState: mainPage.sessionState
         }
 
         UserListPage {
-            apiClient: apiClient
-            sessionState: sessionState
+            apiClient: mainPage.apiClient
+            sessionState: mainPage.sessionState
         }
 
         PolicyListPage {
-            apiClient: apiClient
-            sessionState: sessionState
+            apiClient: mainPage.apiClient
+            sessionState: mainPage.sessionState
         }
 
         AuditLogPage {
-            apiClient: apiClient
-            sessionState: sessionState
+            apiClient: mainPage.apiClient
+            sessionState: mainPage.sessionState
         }
     }
 

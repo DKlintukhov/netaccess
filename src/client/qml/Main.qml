@@ -70,16 +70,16 @@ ApplicationWindow {
     Component {
         id: loginPage
         LoginPage {
-            apiClient: apiClient
-            sessionState: sessionState
+            apiClient: root.apiClient
+            sessionState: root.sessionState
         }
     }
 
     Component {
         id: mainPage
         MainPage {
-            apiClient: apiClient
-            sessionState: sessionState
+            apiClient: root.apiClient
+            sessionState: root.sessionState
         }
     }
 }
