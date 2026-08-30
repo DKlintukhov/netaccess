@@ -25,7 +25,7 @@ Page {
         RowLayout {
             Label { text: qsTr("Policies"); font.bold: true; font.pixelSize: 18 }
             Item { Layout.fillWidth: true }
-            Button { text: qsTr("Refresh"); onClicked: loadPolicies() }
+            Button { text: "Refresh"; font.pointSize: 12; onClicked: loadPolicies() }
         }
 
         ListView {

@@ -16,8 +16,10 @@ Page {
         width: 320
 
         Label {
-            text: "netaccess"
-            font.pixelSize: 24
+            text: "NetAccess"
+            font.pixelSize: 26
+            clip: false
+            font.styleName: "Normal"
             font.bold: true
             Layout.alignment: Qt.AlignHCenter
         }
@@ -26,6 +28,9 @@ Page {
             id: hostField
             placeholderText: qsTr("Host")
             text: "localhost"
+            padding: 4
+            font.pointSize: 12
+            Layout.fillHeight: false
             Layout.fillWidth: true
         }
 
@@ -33,25 +38,29 @@ Page {
             id: portField
             placeholderText: qsTr("Port")
             text: "9988"
+            font.pointSize: 12
             Layout.fillWidth: true
             validator: IntValidator { bottom: 1; top: 65535 }
         }
 
         TextField {
             id: usernameField
+            font.pointSize: 12
             placeholderText: qsTr("Username")
             Layout.fillWidth: true
         }
 
         TextField {
             id: passwordField
+            font.pointSize: 12
             placeholderText: qsTr("Password")
             echoMode: TextInput.Password
             Layout.fillWidth: true
         }
 
         Button {
-            text: qsTr("Connect & Login")
+            text: "Connect and Login"
+            font.pointSize: 12
             Layout.fillWidth: true
             enabled: !apiClient.busy
             onClicked: {
@@ -62,6 +71,7 @@ Page {
         Label {
             id: statusLabel
             text: apiClient.connected ? qsTr("Connected") : qsTr("Disconnected")
+            font.pointSize: 12
             color: apiClient.connected ? "green" : "red"
             Layout.alignment: Qt.AlignHCenter
         }
@@ -105,4 +115,6 @@ Page {
     }
 
     signal handleResponse(int reqId, var response)
+    width: 1024
+    height: 768
 }

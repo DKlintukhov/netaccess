@@ -27,13 +27,14 @@ Page {
 
         RowLayout {
             Label {
-                text: qsTr("Resources")
+                text: "Resources"
                 font.bold: true
                 font.pixelSize: 18
             }
             Item { Layout.fillWidth: true }
             Button {
                 text: qsTr("Refresh")
+                font.pointSize: 12
                 onClicked: loadResources()
             }
         }

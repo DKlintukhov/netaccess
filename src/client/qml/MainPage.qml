@@ -14,17 +14,20 @@ Page {
         RowLayout {
             anchors.fill: parent
             Label {
-                text: "netaccess"
+                text: "NetAccess"
+                font.pointSize: 13
                 font.bold: true
                 padding: 8
             }
             Item { Layout.fillWidth: true }
             Label {
                 text: sessionState.username + " (" + sessionState.role + ")"
+                font.pointSize: 12
                 padding: 8
             }
             Button {
                 text: qsTr("Logout")
+                font.pointSize: 12
                 onClicked: {
                     apiClient.sendRequest("LOGOUT", nextReqId++)
                     sessionState.clear()
@@ -36,6 +39,7 @@ Page {
     TabBar {
         id: tabBar
         anchors.top: parent.top
+        font.pointSize: 12
         width: parent.width
         currentIndex: stackLayout.currentIndex
 
