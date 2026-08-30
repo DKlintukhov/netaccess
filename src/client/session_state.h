@@ -58,12 +58,12 @@ signals:
 
 private:
     QString m_token;
-    qint64 m_userId = 0;
     QString m_username;
     QString m_fullName;
     QString m_role;
-    int m_clearanceLevel = 0;
     QString m_department;
+    qint64 m_userId = 0;
+    int m_clearanceLevel = 0;
 };
 
 } // namespace client

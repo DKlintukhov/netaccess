@@ -9,6 +9,17 @@ ApplicationWindow {
     width: 1024
     height: 768
     title: "netaccess " + netaccessVersion
+    Image {
+        id: backgroundImage
+        anchors.fill: parent
+        source: "images/background.jpeg"
+
+        // Controls how the image scales to fit the window size
+        fillMode: Image.PreserveAspectCrop
+
+        // Places the image behind other UI components
+        z: -1
+    }
 
     // Shared components.
     ApiClient {
