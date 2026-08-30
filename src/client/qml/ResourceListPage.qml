@@ -5,8 +5,8 @@ import QtQuick.Layouts
 Page {
     id: resourcePage
 
-    required property var apiClient
-    required property var sessionState
+    required property var client
+    required property var session
 
     property int listReqId: 0
     property var resourceModel: []
@@ -15,7 +15,7 @@ Page {
 
     function loadResources() {
         listReqId = 1000 + Math.floor(Math.random() * 10000)
-        apiClient.sendRequest("RESOURCE_LIST", listReqId, {
+        client.sendRequest("RESOURCE_LIST", listReqId, {
             "page": 1,
             "page_size": 50
         })
@@ -83,7 +83,7 @@ Page {
 
             BusyIndicator {
                 anchors.centerIn: parent
-                running: apiClient.busy
+                running: client.busy
             }
         }
 

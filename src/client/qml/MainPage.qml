@@ -5,8 +5,8 @@ import QtQuick.Layouts
 Page {
     id: mainPage
 
-    required property var apiClient
-    required property var sessionState
+    required property var client
+    required property var session
 
     property int nextReqId: 100
 
@@ -21,7 +21,7 @@ Page {
             }
             Item { Layout.fillWidth: true }
             Label {
-                text: sessionState.username + " (" + sessionState.role + ")"
+                text: session.username + " (" + session.role + ")"
                 font.pointSize: 12
                 padding: 8
             }
@@ -29,8 +29,8 @@ Page {
                 text: qsTr("Logout")
                 font.pointSize: 12
                 onClicked: {
-                    apiClient.sendRequest("LOGOUT", nextReqId++)
-                    sessionState.clear()
+                    client.sendRequest("LOGOUT", nextReqId++)
+                    session.clear()
                 }
             }
         }
@@ -46,15 +46,15 @@ Page {
         TabButton { text: qsTr("Resources") }
         TabButton {
             text: qsTr("Users")
-            visible: sessionState.isAdmin()
+            visible: session.isAdmin()
         }
         TabButton {
             text: qsTr("Policies")
-            visible: sessionState.isAdmin() || sessionState.role === "auditor"
+            visible: session.isAdmin() || session.role === "auditor"
         }
         TabButton {
             text: qsTr("Audit Log")
-            visible: sessionState.isAdmin() || sessionState.role === "auditor"
+            visible: session.isAdmin() || session.role === "auditor"
         }
     }
 
@@ -67,23 +67,23 @@ Page {
         currentIndex: tabBar.currentIndex
 
         ResourceListPage {
-            apiClient: mainPage.apiClient
-            sessionState: mainPage.sessionState
+            client: mainPage.client
+            session: mainPage.session
         }
 
         UserListPage {
-            apiClient: mainPage.apiClient
-            sessionState: mainPage.sessionState
+            client: mainPage.client
+            session: mainPage.session
         }
 
         PolicyListPage {
-            apiClient: mainPage.apiClient
-            sessionState: mainPage.sessionState
+            client: mainPage.client
+            session: mainPage.session
         }
 
         AuditLogPage {
-            apiClient: mainPage.apiClient
-            sessionState: mainPage.sessionState
+            client: mainPage.client
+            session: mainPage.session
         }
     }
 

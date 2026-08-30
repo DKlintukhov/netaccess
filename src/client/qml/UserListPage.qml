@@ -5,8 +5,8 @@ import QtQuick.Layouts
 Page {
     id: userPage
 
-    required property var apiClient
-    required property var sessionState
+    required property var client
+    required property var session
 
     property int listReqId: 0
     property var userModel: []
@@ -15,7 +15,7 @@ Page {
 
     function loadUsers() {
         listReqId = 2000 + Math.floor(Math.random() * 10000)
-        apiClient.sendRequest("USER_LIST", listReqId, {"page": 1, "page_size": 50})
+        client.sendRequest("USER_LIST", listReqId, {"page": 1, "page_size": 50})
     }
 
     ColumnLayout {
@@ -52,7 +52,7 @@ Page {
                 }
             }
 
-            BusyIndicator { anchors.centerIn: parent; running: apiClient.busy }
+            BusyIndicator { anchors.centerIn: parent; running: client.busy }
         }
 
         Label { text: qsTr("Total: ") + (userModel.length || 0); color: "#666" }

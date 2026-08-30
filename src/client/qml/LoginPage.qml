@@ -5,8 +5,8 @@ import QtQuick.Layouts
 Page {
     id: loginPage
 
-    required property var apiClient
-    required property var sessionState
+    required property var client
+    required property var session
 
     property int loginReqId: 0
 
@@ -62,25 +62,25 @@ Page {
             text: "Connect and Login"
             font.pointSize: 12
             Layout.fillWidth: true
-            enabled: !apiClient.busy
+            enabled: !client.busy
             onClicked: {
-                apiClient.connectToServer(hostField.text, parseInt(portField.text))
+                client.connectToServer(hostField.text, parseInt(portField.text))
             }
         }
 
         Label {
             id: statusLabel
-            text: apiClient.connected ? qsTr("Connected") : qsTr("Disconnected")
+            text: client.connected ? qsTr("Connected") : qsTr("Disconnected")
             font.pointSize: 12
-            color: apiClient.connected ? "green" : "red"
+            color: client.connected ? "green" : "red"
             Layout.alignment: Qt.AlignHCenter
         }
 
         Connections {
-            target: apiClient
+            target: client
             function onConnectedToServer() {
                 loginReqId = 1
-                apiClient.sendRequest("AUTH", loginReqId, {
+                client.sendRequest("AUTH", loginReqId, {
                     "username": usernameField.text,
                     "password": passwordField.text
                 })
@@ -97,7 +97,7 @@ Page {
                 if (reqId !== loginReqId) return
                 if (response.status === "ok") {
                     var data = response.data
-                    sessionState.setAuth(
+                    session.setAuth(
                         data.token,
                         data.user.id,
                         data.user.username,

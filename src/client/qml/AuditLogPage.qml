@@ -5,8 +5,8 @@ import QtQuick.Layouts
 Page {
     id: auditPage
 
-    required property var apiClient
-    required property var sessionState
+    required property var client
+    required property var session
 
     property int queryReqId: 0
     property var auditModel: []
@@ -15,7 +15,7 @@ Page {
 
     function loadAudit() {
         queryReqId = 4000 + Math.floor(Math.random() * 10000)
-        apiClient.sendRequest("AUDIT_QUERY", queryReqId, {"page": 1, "page_size": 100})
+        client.sendRequest("AUDIT_QUERY", queryReqId, {"page": 1, "page_size": 100})
     }
 
     ColumnLayout {
@@ -52,7 +52,7 @@ Page {
                 }
             }
 
-            BusyIndicator { anchors.centerIn: parent; running: apiClient.busy }
+            BusyIndicator { anchors.centerIn: parent; running: client.busy }
         }
 
         Label { text: qsTr("Total: ") + (auditModel.length || 0); color: "#666" }

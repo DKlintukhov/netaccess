@@ -5,8 +5,8 @@ import QtQuick.Layouts
 Page {
     id: policyPage
 
-    required property var apiClient
-    required property var sessionState
+    required property var client
+    required property var session
 
     property int listReqId: 0
     property var policyModel: []
@@ -15,7 +15,7 @@ Page {
 
     function loadPolicies() {
         listReqId = 3000 + Math.floor(Math.random() * 10000)
-        apiClient.sendRequest("POLICY_LIST", listReqId, {"page": 1, "page_size": 50})
+        client.sendRequest("POLICY_LIST", listReqId, {"page": 1, "page_size": 50})
     }
 
     ColumnLayout {
@@ -53,7 +53,7 @@ Page {
                 }
             }
 
-            BusyIndicator { anchors.centerIn: parent; running: apiClient.busy }
+            BusyIndicator { anchors.centerIn: parent; running: client.busy }
         }
 
         Label { text: qsTr("Total: ") + (policyModel.length || 0); color: "#666" }

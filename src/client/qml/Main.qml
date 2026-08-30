@@ -13,15 +13,10 @@ ApplicationWindow {
         id: backgroundImage
         anchors.fill: parent
         source: "images/background.jpeg"
-
-        // Controls how the image scales to fit the window size
         fillMode: Image.PreserveAspectCrop
-
-        // Places the image behind other UI components
         z: -1
     }
 
-    // Shared components.
     ApiClient {
         id: apiClient
         onResponseReceived: function(reqId, response) {
@@ -37,7 +32,6 @@ ApplicationWindow {
         id: sessionState
     }
 
-    // Error dialog.
     Dialog {
         id: errorDialog
         modal: true
@@ -51,7 +45,6 @@ ApplicationWindow {
         }
     }
 
-    // Main content.
     Loader {
         id: pageLoader
         anchors.fill: parent
@@ -60,7 +53,6 @@ ApplicationWindow {
         property int pendingReqId: 0
 
         function handleResponse(reqId, response) {
-            // Delegate to the current page.
             if (pageLoader.item && pageLoader.item.handleResponse) {
                 pageLoader.item.handleResponse(reqId, response)
             }
@@ -70,16 +62,16 @@ ApplicationWindow {
     Component {
         id: loginPage
         LoginPage {
-            apiClient: root.apiClient
-            sessionState: root.sessionState
+            client: apiClient
+            session: sessionState
         }
     }
 
     Component {
         id: mainPage
         MainPage {
-            apiClient: root.apiClient
-            sessionState: root.sessionState
+            client: apiClient
+            session: sessionState
         }
     }
 }
