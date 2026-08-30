@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 Page {
     id: resourcePage
+    background: null
 
     required property var client
     required property var session
