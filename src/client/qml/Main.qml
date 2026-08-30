@@ -9,12 +9,9 @@ ApplicationWindow {
     width: 1024
     height: 768
     title: "netaccess " + netaccessVersion
-    Image {
-        id: backgroundImage
-        anchors.fill: parent
+    background: Image {
         source: "images/background.jpeg"
         fillMode: Image.PreserveAspectCrop
-        z: -1
     }
 
     ApiClient {
