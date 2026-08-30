@@ -9,9 +9,16 @@ ApplicationWindow {
     width: 1024
     height: 768
     title: "netaccess " + netaccessVersion
-    background: Image {
-        source: "qrc:/qml/images/background.jpeg"
-        fillMode: Image.PreserveAspectCrop
+    background: Item {
+        Image {
+            anchors.fill: parent
+            source: "qrc:/qml/images/background.jpeg"
+            fillMode: Image.PreserveAspectCrop
+        }
+        Rectangle {
+            anchors.fill: parent
+            color: "#B0000000"
+        }
     }
 
     ApiClient {
