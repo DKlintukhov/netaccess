@@ -13,11 +13,11 @@
  * (GOST 19.402-78).
  */
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <cstdint>
 
 namespace domain
 {
