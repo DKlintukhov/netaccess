@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstdint>
 
 namespace domain
 {
@@ -32,7 +33,7 @@ using ID = uint64_t;
 /**
  * @brief Actions (permissions) a subject can perform on a resource.
  */
-enum class Action
+enum class Action : uint8_t
 {
     read,    ///< View/read a resource.
     write,   ///< Write to a resource.

@@ -17,7 +17,7 @@ ApplicationWindow {
         }
         Rectangle {
             anchors.fill: parent
-            color: "#B0000000"
+            color: "#F0000000"
         }
     }
 
