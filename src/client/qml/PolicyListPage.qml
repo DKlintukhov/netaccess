@@ -11,9 +11,11 @@ Page {
 
     property int listReqId: 0
     property int createReqId: 0
+    property int editReqId: 0
     property int deleteReqId: 0
     property var policyModel: []
     property var pendingDelete: null
+    property var pendingEdit: null
 
     Component.onCompleted: loadPolicies()
 
@@ -39,6 +41,35 @@ Page {
     function deletePolicy(id) {
         deleteReqId = 3200 + Math.floor(Math.random() * 10000)
         client.sendRequest("POLICY_DELETE", deleteReqId, {"policy_id": id})
+    }
+
+    function openEditDialog(item) {
+        pendingEdit = item
+        editNameField.text = item.name || ""
+        editActionCombo.currentIndex = Math.max(0, editActionCombo.model.indexOf(item.action || "read"))
+        editRoleField.text = item.role_required || ""
+        editDeptField.text = item.department_required || ""
+        editResourceTypeField.text = item.resource_type || ""
+        var cl = item.min_clearance !== undefined ? String(item.min_clearance) : ""
+        editClearanceCombo.currentIndex = Math.max(0, editClearanceCombo.model.indexOf(cl))
+        editPriorityField.text = (item.priority !== undefined) ? String(item.priority) : "0"
+        editEnabledCheck.checked = item.enabled !== false
+        editDialog.open()
+    }
+
+    function updatePolicy() {
+        editReqId = 3300 + Math.floor(Math.random() * 10000)
+        client.sendRequest("POLICY_UPDATE", editReqId, {
+            "policy_id": pendingEdit.id,
+            "name": editNameField.text,
+            "action": editActionCombo.currentText,
+            "role_required": editRoleField.text,
+            "department_required": editDeptField.text,
+            "resource_type": editResourceTypeField.text,
+            "min_clearance": editClearanceCombo.currentText === "" ? -1 : parseInt(editClearanceCombo.currentText),
+            "priority": parseInt(editPriorityField.text) || 0,
+            "enabled": editEnabledCheck.checked
+        })
     }
 
     ColumnLayout {
@@ -79,6 +110,12 @@ Page {
                     Label { text: modelData.resource_type || "*"; color: "#999"; width: 100 }
                     Label { text: "P:" + (modelData.priority || 0); width: 50 }
                     Label { text: modelData.enabled ? qsTr("ON") : qsTr("OFF"); color: modelData.enabled ? "green" : "red" }
+                    Button {
+                        text: qsTr("Edit")
+                        font.pointSize: 10
+                        visible: session.isAdmin()
+                        onClicked: openEditDialog(modelData)
+                    }
                     Button {
                         text: qsTr("Delete")
                         font.pointSize: 10
@@ -136,6 +173,46 @@ Page {
     }
 
     Dialog {
+        id: editDialog
+        title: qsTr("Edit Policy")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: updatePolicy()
+        onRejected: pendingEdit = null
+
+        ColumnLayout {
+            width: 320
+            spacing: 8
+            TextField { id: editNameField; placeholderText: qsTr("Name"); Layout.fillWidth: true }
+            ComboBox {
+                id: editActionCombo
+                model: ["read", "write", "manage", "connect", "select", "modify", "print", "access", "admin", "any"]
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+            }
+            TextField { id: editRoleField; placeholderText: qsTr("Role required (empty = any)"); Layout.fillWidth: true }
+            TextField { id: editDeptField; placeholderText: qsTr("Department required (empty = any)"); Layout.fillWidth: true }
+            TextField { id: editResourceTypeField; placeholderText: qsTr("Resource type (empty = any)"); Layout.fillWidth: true }
+            RowLayout {
+                ComboBox {
+                    id: editClearanceCombo
+                    model: ["", "0", "1", "2", "3", "4", "5"]
+                    Layout.preferredWidth: 120
+                    Layout.preferredHeight: 30
+                }
+                TextField {
+                    id: editPriorityField
+                    placeholderText: qsTr("Priority")
+                    validator: IntValidator { bottom: 0; top: 99999 }
+                    Layout.fillWidth: true
+                }
+            }
+            CheckBox { id: editEnabledCheck; text: qsTr("Enabled") }
+        }
+    }
+
+    Dialog {
         id: deleteDialog
         title: qsTr("Confirm Delete")
         modal: true
@@ -164,7 +241,7 @@ Page {
         }
         if (reqId === listReqId && response.data) {
             policyModel = response.data.items || []
-        } else if (reqId === createReqId || reqId === deleteReqId) {
+        } else if (reqId === createReqId || reqId === editReqId || reqId === deleteReqId) {
             loadPolicies()
         }
     }

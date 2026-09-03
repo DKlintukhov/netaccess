@@ -11,9 +11,11 @@ Page {
 
     property int listReqId: 0
     property int createReqId: 0
+    property int editReqId: 0
     property int deleteReqId: 0
     property var resourceModel: []
     property var pendingDelete: null
+    property var pendingEdit: null
 
     Component.onCompleted: loadResources()
 
@@ -32,6 +34,26 @@ Page {
             "resource_type": typeCombo.currentText,
             "address": addressField.text,
             "description": descField.text
+        })
+    }
+
+    function openEditDialog(item) {
+        pendingEdit = item
+        editNameField.text = item.name || ""
+        editTypeCombo.currentIndex = Math.max(0, editTypeCombo.model.indexOf(item.resource_type || ""))
+        editAddressField.text = item.address || ""
+        editDescField.text = item.description || ""
+        editDialog.open()
+    }
+
+    function updateResource() {
+        editReqId = 1300 + Math.floor(Math.random() * 10000)
+        client.sendRequest("RESOURCE_UPDATE", editReqId, {
+            "resource_id": pendingEdit.id,
+            "name": editNameField.text,
+            "resource_type": editTypeCombo.currentText,
+            "address": editAddressField.text,
+            "description": editDescField.text
         })
     }
 
@@ -97,6 +119,12 @@ Page {
                             Layout.fillWidth: true
                         }
                         Button {
+                            text: qsTr("Edit")
+                            font.pointSize: 10
+                            visible: session.isAdmin()
+                            onClicked: openEditDialog(modelData)
+                        }
+                        Button {
                             text: qsTr("Delete")
                             font.pointSize: 10
                             visible: session.isAdmin()
@@ -151,6 +179,30 @@ Page {
     }
 
     Dialog {
+        id: editDialog
+        title: qsTr("Edit Resource")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: updateResource()
+        onRejected: pendingEdit = null
+
+        ColumnLayout {
+            width: 300
+            spacing: 8
+            TextField { id: editNameField; placeholderText: qsTr("Name"); Layout.fillWidth: true }
+            ComboBox {
+                id: editTypeCombo
+                model: ["file_share", "database", "printer", "web_service", "server", "vpn"]
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+            }
+            TextField { id: editAddressField; placeholderText: qsTr("Address"); Layout.fillWidth: true }
+            TextField { id: editDescField; placeholderText: qsTr("Description"); Layout.fillWidth: true }
+        }
+    }
+
+    Dialog {
         id: deleteDialog
         title: qsTr("Confirm Delete")
         modal: true
@@ -179,7 +231,7 @@ Page {
         }
         if (reqId === listReqId && response.data) {
             resourceModel = response.data.items || []
-        } else if (reqId === createReqId || reqId === deleteReqId) {
+        } else if (reqId === createReqId || reqId === editReqId || reqId === deleteReqId) {
             loadResources()
         }
     }
