@@ -10,6 +10,7 @@ Page {
     required property var session
 
     property int nextReqId: 100
+    property int meReqId: 0
 
     header: ToolBar {
         RowLayout {
@@ -25,6 +26,15 @@ Page {
                 text: session.username + " (" + session.role + ")"
                 font.pointSize: 12
                 padding: 8
+            }
+            Button {
+                text: qsTr("Profile")
+                font.pointSize: 12
+                onClicked: {
+                    meReqId = 9500 + Math.floor(Math.random() * 10000)
+                    client.sendRequest("ME", meReqId, {})
+                    profileDialog.open()
+                }
             }
             Button {
                 text: qsTr("Logout")
@@ -112,6 +122,21 @@ Page {
     signal handleResponse(int reqId, var response)
 
     onHandleResponse: function(reqId, response) {
+        if (reqId === meReqId) {
+            if (response.status !== "ok") {
+                errorLabel.text = response.message || response.code || qsTr("Error")
+                errorDialog.open()
+                return
+            }
+            var d = response.data || {}
+            profUsername.text = d.username || ""
+            profName.text = d.full_name || ""
+            profRole.text = d.role || ""
+            profDept.text = d.department || ""
+            profClearance.text = String(d.clearance_level !== undefined ? d.clearance_level : "")
+            profPosition.text = d.position || ""
+            return
+        }
         dispatchResponse(reqId, response)
     }
 
@@ -121,6 +146,34 @@ Page {
             if (item && item.handleResponse) {
                 item.handleResponse(reqId, response)
             }
+        }
+    }
+
+    Dialog {
+        id: profileDialog
+        title: qsTr("My Profile")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Close
+        width: 360
+
+        GridLayout {
+            width: parent.width
+            columns: 2
+            columnSpacing: 12
+            rowSpacing: 6
+            Label { text: qsTr("Username:"); color: "#666" }
+            Label { id: profUsername; text: ""; font.bold: true }
+            Label { text: qsTr("Full name:"); color: "#666" }
+            Label { id: profName; text: "" }
+            Label { text: qsTr("Role:"); color: "#666" }
+            Label { id: profRole; text: "" }
+            Label { text: qsTr("Department:"); color: "#666" }
+            Label { id: profDept; text: "" }
+            Label { text: qsTr("Clearance level:"); color: "#666" }
+            Label { id: profClearance; text: "" }
+            Label { text: qsTr("Position:"); color: "#666" }
+            Label { id: profPosition; text: "" }
         }
     }
 }

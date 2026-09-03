@@ -13,6 +13,7 @@ Page {
     property int createReqId: 0
     property int editReqId: 0
     property int deleteReqId: 0
+    property int detailsReqId: 0
     property var resourceModel: []
     property var pendingDelete: null
     property var pendingEdit: null
@@ -60,6 +61,14 @@ Page {
     function deleteResource(id) {
         deleteReqId = 1200 + Math.floor(Math.random() * 10000)
         client.sendRequest("RESOURCE_DELETE", deleteReqId, {"resource_id": id})
+    }
+
+    function showDetails(item) {
+        detailsReqId = 1400 + Math.floor(Math.random() * 10000)
+        client.sendRequest("RESOURCE_GET", detailsReqId, {"resource_id": item.id})
+        detailsDialog.open()
+        detailsNameLabel.text = ""
+        detailsBodyLabel.text = qsTr("Loading...")
     }
 
     ColumnLayout {
@@ -117,6 +126,11 @@ Page {
                             text: modelData.address || ""
                             color: "#999"
                             Layout.fillWidth: true
+                        }
+                        Button {
+                            text: qsTr("Details")
+                            font.pointSize: 10
+                            onClicked: showDetails(modelData)
                         }
                         Button {
                             text: qsTr("Edit")
@@ -203,6 +217,48 @@ Page {
     }
 
     Dialog {
+        id: detailsDialog
+        title: qsTr("Resource Details")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Close
+        width: 360
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 8
+            Label {
+                id: detailsNameLabel
+                text: ""
+                font.bold: true
+                font.pixelSize: 16
+            }
+            GridLayout {
+                columns: 2
+                columnSpacing: 12
+                rowSpacing: 4
+                Layout.fillWidth: true
+                Label { text: qsTr("ID:"); color: "#666" }
+                Label { id: detId; text: "" }
+                Label { text: qsTr("Type:"); color: "#666" }
+                Label { id: detType; text: "" }
+                Label { text: qsTr("Address:"); color: "#666" }
+                Label { id: detAddress; text: "" }
+                Label { text: qsTr("Owner ID:"); color: "#666" }
+                Label { id: detOwner; text: "" }
+                Label { text: qsTr("Active:"); color: "#666" }
+                Label { id: detActive; text: "" }
+            }
+            Label {
+                id: detailsBodyLabel
+                text: ""
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+        }
+    }
+
+    Dialog {
         id: deleteDialog
         title: qsTr("Confirm Delete")
         modal: true
@@ -224,6 +280,21 @@ Page {
     signal handleResponse(int reqId, var response)
 
     onHandleResponse: function(reqId, response) {
+        if (reqId === detailsReqId) {
+            if (response.status !== "ok") {
+                detailsBodyLabel.text = response.message || response.code || qsTr("Error")
+                return
+            }
+            var d = response.data || {}
+            detailsNameLabel.text = d.name || ""
+            detId.text = String(d.id !== undefined ? d.id : "")
+            detType.text = d.resource_type || ""
+            detAddress.text = d.address || ""
+            detOwner.text = String(d.owner_id !== undefined ? d.owner_id : "")
+            detActive.text = d.is_active ? qsTr("Yes") : qsTr("No")
+            detailsBodyLabel.text = d.description || ""
+            return
+        }
         if (response.status !== "ok") {
             errorLabel.text = response.message || response.code || qsTr("Error")
             errorDialog.open()
