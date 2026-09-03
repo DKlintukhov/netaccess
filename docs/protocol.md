@@ -218,7 +218,7 @@ sequenceDiagram
         S-->>C: AUTH_OK (token, user, role)
         loop каждая операция
             C->>S: OP (token, ...)
-            S->>P: evaluate_policy(subject, resource, action)
+            S->>P: evaluate(userId, resourceId, action, resourceType)
             alt разрешено
                 S-->>C: OK
             else запрещено

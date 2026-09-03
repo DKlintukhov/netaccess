@@ -13,7 +13,7 @@
 2. **Вся авторизация выполняется на сервере.** Клиент не принимает решений о доступе —
    это исключает обход проверки через модифицированный клиент.
 3. **Проверка ABAC на каждый запрос.** Каждое действие с ресурсом (включая операции
-   каталога, политик и аудита) проходит через ABAC-движок сервера.
+   каталога, политик и аудита) проходит через точку принятия решений PDP (ABAC) на сервере.
 4. **Deny by default.** Отсутствие разрешающего правила = отказ.
 5. **Разделение ролей**: Администратор / Пользователь / Аудитор. Роль является атрибутом
    субъекта (модель ABAC), а не отдельным механизмом.
@@ -35,10 +35,11 @@ graph LR
         ACC[Listener/приём соединений]
         SES[Менеджер сессий]
         AUTH[Аутентификация]
-        ABAC[ABAC-движок evaluate_policy]
-        BIZ[Обработчики операций]
+        PEP[PEP — точка применения политик]
+        PDP[PDP — точка принятия решений evaluate]
+        PIP[PIP — информационная точка / QPSQL]
+        PAP[PAP — точка администрирования политик]
         AUDIT[Журнал аудита]
-        DB[Слой данных QPSQL]
         TLS2[TLS]
     end
 
@@ -52,11 +53,12 @@ graph LR
     TLS2 --> ACC
     ACC --> SES
     SES --> AUTH
-    AUTH --> ABAC
-    ABAC --> BIZ
-    BIZ --> DB
-    BIZ --> AUDIT
-    DB --> PG
+    AUTH --> PEP
+    PEP --> PDP
+    PDP --> PIP
+    PEP --> AUDIT
+    PAP --> PDP
+    PIP --> PG
 ```
 
 ## 3 Модульная структура
@@ -69,10 +71,11 @@ graph LR
 | `listener` | Приём TCP-соединений, TLS-хендшейк |
 | `session_manager` | Учёт сессий (токены), таймауты, максимальное число сессий |
 | `authenticator` | Проверка учётных данных, генерация токена, политика паролей, блокировка |
-| `policy_engine` | ABAC: `evaluate_policy(subject, resource, action)`, типизированные условия политик (роль, подразделение, уровень допуска, тип ресурса, конкретный субъект/ресурс) |
-| `handlers` | Обработчики операций (каталог ресурсов, политики, аудит, пользователи) |
+| `pip` | Информационная точка политик (PIP): слой данных, параметризованные запросы QPSQL (prepared statements), атрибуты субъекта/ресурса, политики, аудит |
+| `pdp` | Точка принятия решений (PDP): ABAC `evaluate(userId, resourceId, action, resourceType)`, типизированные условия политик (роль, подразделение, уровень допуска, тип ресурса, конкретный субъект/ресурс), deny by default |
+| `pap` | Точка администрирования политик (PAP): CRUD политик (list/create/update/delete) |
+| `pep` | Точка применения политик (PEP): обработчики 20 операций протокола, проверка токена и делегирование проверки доступа в PDP |
 | `audit` | Запись событий безопасности в `audit_log` (ГОСТ Р 59548) |
-| `db_layer` | Слой данных: параметризованные запросы QPSQL (prepared statements) |
 
 ### 3.2 Клиент
 
@@ -87,7 +90,7 @@ graph LR
 
 | Модуль | Назначение |
 |---|---|
-| `domain` | Модель данных ABAC: Subject, Resource, Policy, Action, evaluate_policy |
+| `domain` | Модель данных ABAC: Subject, Resource, Policy, Action |
 | `protocol` | Сериализация/десериализация сообщений (JSON), коды операций и результатов |
 
 ## 4 Потоки обработки
@@ -98,8 +101,8 @@ graph LR
 sequenceDiagram
     participant C as Клиент
     participant S as Сервер
-    participant P as ABAC engine
-    participant D as Слой данных
+    participant P as PDP (точка принятия решений)
+    participant D as PIP (слой данных)
 
     C->>S: AUTH (username, password)
     S->>D: SELECT user (prepared)
@@ -120,12 +123,12 @@ sequenceDiagram
 sequenceDiagram
     participant C as Клиент
     participant S as Сервер
-    participant P as ABAC engine
-    participant D as Слой данных
+    participant P as PDP (точка принятия решений)
+    participant D as PIP (слой данных)
 
     C->>S: OP (token, действие, ресурс)
     S->>S: проверка токена (валиден/просрочен)
-    S->>P: evaluate_policy(subject, resource, action)
+    S->>P: evaluate(userId, resourceId, action, resourceType)
     alt разрешено
         S->>D: выполнение операции
         S->>D: запись audit_log
