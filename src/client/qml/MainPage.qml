@@ -116,9 +116,11 @@ Page {
     }
 
     function dispatchResponse(reqId, response) {
-        var item = stackLayout.children[stackLayout.currentIndex]
-        if (item && item.handleResponse) {
-            item.handleResponse(reqId, response)
+        for (var i = 0; i < stackLayout.children.length; i++) {
+            var item = stackLayout.children[i]
+            if (item && item.handleResponse) {
+                item.handleResponse(reqId, response)
+            }
         }
     }
 }
