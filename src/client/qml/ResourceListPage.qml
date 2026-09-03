@@ -10,7 +10,10 @@ Page {
     required property var session
 
     property int listReqId: 0
+    property int createReqId: 0
+    property int deleteReqId: 0
     property var resourceModel: []
+    property var pendingDelete: null
 
     Component.onCompleted: loadResources()
 
@@ -22,13 +25,28 @@ Page {
         })
     }
 
+    function createResource() {
+        createReqId = 1100 + Math.floor(Math.random() * 10000)
+        client.sendRequest("RESOURCE_CREATE", createReqId, {
+            "name": nameField.text,
+            "resource_type": typeCombo.currentText,
+            "address": addressField.text,
+            "description": descField.text
+        })
+    }
+
+    function deleteResource(id) {
+        deleteReqId = 1200 + Math.floor(Math.random() * 10000)
+        client.sendRequest("RESOURCE_DELETE", deleteReqId, {"resource_id": id})
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 8
 
         RowLayout {
             Label {
-                text: "Resources"
+                text: qsTr("Resources")
                 font.bold: true
                 font.pixelSize: 18
             }
@@ -37,6 +55,12 @@ Page {
                 text: qsTr("Refresh")
                 font.pointSize: 12
                 onClicked: loadResources()
+            }
+            Button {
+                text: qsTr("Add")
+                font.pointSize: 12
+                visible: session.isAdmin()
+                onClicked: createDialog.open()
             }
         }
 
@@ -72,6 +96,15 @@ Page {
                             color: "#999"
                             Layout.fillWidth: true
                         }
+                        Button {
+                            text: qsTr("Delete")
+                            font.pointSize: 10
+                            visible: session.isAdmin()
+                            onClicked: {
+                                pendingDelete = modelData
+                                deleteDialog.open()
+                            }
+                        }
                     }
                     Label {
                         text: modelData.description || ""
@@ -94,12 +127,60 @@ Page {
         }
     }
 
+    Dialog {
+        id: createDialog
+        title: qsTr("New Resource")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: createResource()
+
+        ColumnLayout {
+            width: 300
+            spacing: 8
+            TextField { id: nameField; placeholderText: qsTr("Name"); Layout.fillWidth: true }
+            ComboBox {
+                id: typeCombo
+                model: ["file_share", "database", "printer", "web_service", "server", "vpn"]
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+            }
+            TextField { id: addressField; placeholderText: qsTr("Address"); Layout.fillWidth: true }
+            TextField { id: descField; placeholderText: qsTr("Description"); Layout.fillWidth: true }
+        }
+    }
+
+    Dialog {
+        id: deleteDialog
+        title: qsTr("Confirm Delete")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: {
+            if (pendingDelete)
+                deleteResource(pendingDelete.id)
+            pendingDelete = null
+        }
+        onRejected: pendingDelete = null
+
+        Label {
+            text: pendingDelete ? qsTr("Delete resource '%1'?").arg(pendingDelete.name) : ""
+            wrapMode: Text.Wrap
+        }
+    }
+
     signal handleResponse(int reqId, var response)
 
     onHandleResponse: function(reqId, response) {
-        if (reqId !== listReqId) return
-        if (response.status === "ok" && response.data) {
+        if (response.status !== "ok") {
+            errorLabel.text = response.message || response.code || qsTr("Error")
+            errorDialog.open()
+            return
+        }
+        if (reqId === listReqId && response.data) {
             resourceModel = response.data.items || []
+        } else if (reqId === createReqId || reqId === deleteReqId) {
+            loadResources()
         }
     }
 }

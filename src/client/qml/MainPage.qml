@@ -68,21 +68,25 @@ Page {
         currentIndex: tabBar.currentIndex
 
         ResourceListPage {
+            id: resourcePage
             client: mainPage.client
             session: mainPage.session
         }
 
         UserListPage {
+            id: userPage
             client: mainPage.client
             session: mainPage.session
         }
 
         PolicyListPage {
+            id: policyPage
             client: mainPage.client
             session: mainPage.session
         }
 
         AuditLogPage {
+            id: auditPage
             client: mainPage.client
             session: mainPage.session
         }
@@ -90,8 +94,12 @@ Page {
 
     signal handleResponse(int reqId, var response)
 
+    onHandleResponse: function(reqId, response) {
+        dispatchResponse(reqId, response)
+    }
+
     function dispatchResponse(reqId, response) {
-        var item = stackLayout.currentItem
+        var item = stackLayout.children[stackLayout.currentIndex]
         if (item && item.handleResponse) {
             item.handleResponse(reqId, response)
         }

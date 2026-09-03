@@ -62,8 +62,13 @@ Page {
     signal handleResponse(int reqId, var response)
 
     onHandleResponse: function(reqId, response) {
+        if (response.status !== "ok") {
+            errorLabel.text = response.message || response.code || qsTr("Error")
+            errorDialog.open()
+            return
+        }
         if (reqId !== queryReqId) return
-        if (response.status === "ok" && response.data)
+        if (response.data)
             auditModel = response.data.items || []
     }
 }
