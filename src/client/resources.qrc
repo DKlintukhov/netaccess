@@ -8,6 +8,7 @@
         <file>qml/PolicyListPage.qml</file>
         <file>qml/AuditLogPage.qml</file>
         <file>qml/AccessCheckPage.qml</file>
+        <file>qml/GrantAccessPage.qml</file>
         <file>qml/images/background.jpeg</file>
         <file>translations/netaccess_ru.ts</file>
         <file>translations/netaccess_en.ts</file>

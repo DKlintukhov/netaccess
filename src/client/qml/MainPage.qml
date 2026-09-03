@@ -51,6 +51,10 @@ Page {
             visible: session.isAdmin()
         }
         TabButton {
+            text: qsTr("Grant Access")
+            visible: session.isAdmin()
+        }
+        TabButton {
             text: qsTr("Policies")
             visible: session.isAdmin() || session.role === "auditor"
         }
@@ -82,6 +86,12 @@ Page {
 
         UserListPage {
             id: userPage
+            client: mainPage.client
+            session: mainPage.session
+        }
+
+        GrantAccessPage {
+            id: grantPage
             client: mainPage.client
             session: mainPage.session
         }
