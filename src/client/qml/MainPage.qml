@@ -45,6 +45,7 @@ Page {
         currentIndex: stackLayout.currentIndex
 
         TabButton { text: qsTr("Resources") }
+        TabButton { text: qsTr("Access Check") }
         TabButton {
             text: qsTr("Users")
             visible: session.isAdmin()
@@ -69,6 +70,12 @@ Page {
 
         ResourceListPage {
             id: resourcePage
+            client: mainPage.client
+            session: mainPage.session
+        }
+
+        AccessCheckPage {
+            id: accessPage
             client: mainPage.client
             session: mainPage.session
         }
