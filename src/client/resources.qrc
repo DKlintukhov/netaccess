@@ -10,7 +10,7 @@
         <file>qml/AccessCheckPage.qml</file>
         <file>qml/GrantAccessPage.qml</file>
         <file>qml/images/background.jpeg</file>
-        <file>translations/netaccess_ru.ts</file>
-        <file>translations/netaccess_en.ts</file>
+        <file>translations/netaccess_ru.qm</file>
+        <file>translations/netaccess_en.qm</file>
     </qresource>
 </RCC>

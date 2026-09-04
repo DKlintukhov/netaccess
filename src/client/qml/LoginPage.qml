@@ -60,7 +60,7 @@ Page {
         }
 
         Button {
-            text: "Connect and Login"
+            text: qsTr("Connect and Login")
             font.pointSize: 12
             Layout.fillWidth: true
             enabled: !client.busy
